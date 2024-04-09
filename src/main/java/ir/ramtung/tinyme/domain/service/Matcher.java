@@ -9,6 +9,8 @@ import java.util.ListIterator;
 @Service
 public class Matcher {
     public MatchResult match(Order newOrder) {
+        boolean min = newOrder.getStatus() == OrderStatus.NEW;
+        int prevQuantity = newOrder.getQuantity();
         OrderBook orderBook = newOrder.getSecurity().getOrderBook();
         LinkedList<Trade> trades = new LinkedList<>();
 
@@ -42,6 +44,10 @@ public class Matcher {
                 matchingOrder.decreaseQuantity(newOrder.getQuantity());
                 newOrder.makeQuantityZero();
             }
+        }
+        if (min && (prevQuantity - newOrder.getQuantity() < newOrder.getMinimumExecutionQuantity())) {
+            rollbackTrades(newOrder, trades);
+            return MatchResult.notSatisfyMinExec();
         }
         return MatchResult.executed(newOrder, trades);
     }
