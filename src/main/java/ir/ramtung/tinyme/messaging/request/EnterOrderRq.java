@@ -26,7 +26,21 @@ public class EnterOrderRq {
     private long brokerId;
     private long shareholderId;
     private int peakSize;
-    private int minimumExecutionQuantity;
+    private int minimumExecutionQuantity = 0;
+    private EnterOrderRq(OrderEntryType orderEntryType, long requestId, String securityIsin, long orderId, LocalDateTime entryTime, Side side, int quantity, int price, long brokerId, long shareholderId, int peakSize) {
+        this.requestType = orderEntryType;
+        this.requestId = requestId;
+        this.securityIsin = securityIsin;
+        this.orderId = orderId;
+        this.entryTime = entryTime;
+        this.side = side;
+        this.quantity = quantity;
+        this.price = price;
+        this.brokerId = brokerId;
+        this.shareholderId = shareholderId;
+        this.peakSize = peakSize;
+    }
+
     private EnterOrderRq(OrderEntryType orderEntryType, long requestId, String securityIsin, long orderId, LocalDateTime entryTime, Side side, int quantity, int price, long brokerId, long shareholderId, int peakSize, int minimumExecutionQuantity) {
         this.requestType = orderEntryType;
         this.requestId = requestId;
@@ -39,11 +53,12 @@ public class EnterOrderRq {
         this.brokerId = brokerId;
         this.shareholderId = shareholderId;
         this.peakSize = peakSize;
-        this.minimumExecutionQuantity = minimumExecutionQuantity;
+        if (minimumExecutionQuantity != -1)
+            this.minimumExecutionQuantity = minimumExecutionQuantity;
     }
 
     public static EnterOrderRq createNewOrderRq(long requestId, String securityIsin, long orderId, LocalDateTime entryTime, Side side, int quantity, int price, long brokerId, long shareholderId, int peakSize) {
-        return new EnterOrderRq(OrderEntryType.NEW_ORDER, requestId, securityIsin, orderId, entryTime, side, quantity, price, brokerId, shareholderId, peakSize, 0);
+        return new EnterOrderRq(OrderEntryType.NEW_ORDER, requestId, securityIsin, orderId, entryTime, side, quantity, price, brokerId, shareholderId, peakSize);
     }
 
     public static EnterOrderRq createNewOrderWithMinRq(long requestId, String securityIsin, long orderId, LocalDateTime entryTime, Side side, int quantity, int price, long brokerId, long shareholderId, int peakSize, int minimumExecutionQuantity) {
@@ -51,7 +66,7 @@ public class EnterOrderRq {
     }
 
     public static EnterOrderRq createUpdateOrderRq(long requestId, String securityIsin, long orderId, LocalDateTime entryTime, Side side, int quantity, int price, long brokerId, long shareholderId, int peakSize) {
-        return new EnterOrderRq(OrderEntryType.UPDATE_ORDER, requestId, securityIsin, orderId, entryTime, side, quantity, price, brokerId, shareholderId, peakSize, 0);
+        return new EnterOrderRq(OrderEntryType.UPDATE_ORDER, requestId, securityIsin, orderId, entryTime, side, quantity, price, brokerId, shareholderId, peakSize);
     }
 
     public static EnterOrderRq createUpdateOrderWithMinRq(long requestId, String securityIsin, long orderId, LocalDateTime entryTime, Side side, int quantity, int price, long brokerId, long shareholderId, int peakSize, int minimumExecutionQuantity) {
