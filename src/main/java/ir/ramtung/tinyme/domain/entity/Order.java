@@ -42,6 +42,7 @@ public class Order {
         this.minimumExecutionQuantity = minimumExecutionQuantity;
         this.isFirstEntry = isFirstEntry;
     }
+
     public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status, int minimumExecutionQuantity) {
         this.orderId = orderId;
         this.security = security;
@@ -53,6 +54,7 @@ public class Order {
         this.shareholder = shareholder;
         this.status = status;
         this.minimumExecutionQuantity = minimumExecutionQuantity;
+        this.isFirstEntry = true;
     }
 
     public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status) {
@@ -65,9 +67,8 @@ public class Order {
         this.broker = broker;
         this.shareholder = shareholder;
         this.status = status;
+        this.isFirstEntry = true;
     }
-
-
 
     public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime) {
         this.orderId = orderId;
@@ -79,6 +80,7 @@ public class Order {
         this.broker = broker;
         this.shareholder = shareholder;
         this.status = OrderStatus.NEW;
+        this.isFirstEntry = true;
     }
 
 
@@ -141,7 +143,9 @@ public class Order {
 
     public int getTotalQuantity() { return quantity; }
 
-    public boolean isMinExecQuantitySatisfied(int prevQuantity) { return prevQuantity - quantity >= minimumExecutionQuantity; }
+    public boolean isMinExecQuantitySatisfied(int prevQuantity) {
+        return minimumExecutionQuantity == 0 || (prevQuantity - quantity >= minimumExecutionQuantity);
+    }
 
     public void unmarkAsFirstEntry() { isFirstEntry = false; }
 }
