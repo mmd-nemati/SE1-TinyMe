@@ -74,7 +74,7 @@ public class Matcher {
 
     public MatchResult execute(Order order) {
         MatchResult result = match(order);
-        order.unmarkAsFirstEntry();
+        order.unmarkFirstEntry();
         if (result.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT || result.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC)
             return result;
 

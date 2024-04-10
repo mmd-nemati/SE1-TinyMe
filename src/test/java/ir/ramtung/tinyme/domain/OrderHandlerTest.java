@@ -559,13 +559,13 @@ public class OrderHandlerTest {
         assertThat(shareholder1.hasEnoughPositionsOn(security, 100_000)).isTrue();
         assertThat(shareholder.hasEnoughPositionsOn(security, 500)).isTrue();
     }
-///////////////////// NEW
+
     @Test
     void orders_with_negative_min_exec_quantity_are_rejected() {
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6, LocalDateTime.now(), Side.SELL, 350, 580, broker1.getBrokerId(), shareholder.getShareholderId(), 0, -150));
         verify(eventPublisher).publish(new OrderRejectedEvent(1, 6, List.of(Message.ORDER_MINIMUM_EXEC_QUANTITY_NEGATIVE)));
 
-        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(1, "ABC", 3, LocalDateTime.now(), Side.BUY, 450, 580, broker3.getBrokerId(), shareholder.getShareholderId(), 0, -250));
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(1, "ABC", 3, LocalDateTime.now(), Side.BUY, 450, 580, broker3.getBrokerId(), shareholder.getShareholderId(), 10, -250));
         verify(eventPublisher).publish(new OrderRejectedEvent(1, 3, List.of(Message.ORDER_MINIMUM_EXEC_QUANTITY_NEGATIVE)));
     }
 
@@ -579,7 +579,7 @@ public class OrderHandlerTest {
     }
 
     @Test
-    void first_entry_update_orders_change_min_exec_quantity_are_rejected() {
+    void update_orders_change_min_exec_quantity_are_rejected() {
         List<Order> orders = Arrays.asList(
                 new Order(3, security, Side.BUY, 445, 545, broker3, shareholder, LocalDateTime.now(), OrderStatus.NEW, 200),
                 new Order(6, security, Side.SELL, 350, 580, broker1, shareholder, LocalDateTime.now(), OrderStatus.NEW, 200)
@@ -594,7 +594,7 @@ public class OrderHandlerTest {
     }
 
     @Test
-    void buy_order_not_satisfied_min_exec_quantity_is_rejected_not_entered_queue() {
+    void buy_order_not_satisfied_min_exec_quantity_is_rejected() {
         broker3.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
                 new Order(3, security, Side.BUY, 50, 545, broker3, shareholder),
@@ -608,7 +608,7 @@ public class OrderHandlerTest {
     }
 
     @Test
-    void sell_order_not_satisfied_min_exec_quantity_is_rejected_not_entered_queue() {
+    void sell_order_not_satisfied_min_exec_quantity_is_rejected() {
         broker3.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
                 new Order(3, security, Side.BUY, 50, 545, broker3, shareholder),
@@ -622,7 +622,7 @@ public class OrderHandlerTest {
     }
 
     @Test
-    void order_satisfied_min_exec_quantity_is_accepted() {
+    void buy_order_satisfied_min_exec_quantity_is_accepted() {
         broker3.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
                 new Order(3, security, Side.BUY, 50, 545, broker3, shareholder),
@@ -632,21 +632,6 @@ public class OrderHandlerTest {
 
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.BUY, 100, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 0, 45));
         verify(eventPublisher).publish(any(OrderAcceptedEvent.class));
-    }
-
-    @Test
-    void update_buy_order_after_satisfied_min_exec_quantity_is_rejected() {
-        broker3.increaseCreditBy(100_000);
-        List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker3, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
-        );
-        orders.forEach(order -> security.getOrderBook().enqueue(order));
-
-        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.BUY, 100, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 0, 45));
-        verify(eventPublisher).publish(any(OrderAcceptedEvent.class));
-        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10, LocalDateTime.now(), Side.BUY, 150, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 0, 50));
-        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.CANNOT_CHANGE_MINIMUM_EXEC_QUANTITY)));
     }
 
     @Test
@@ -658,9 +643,10 @@ public class OrderHandlerTest {
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
-        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.BUY, 100, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 0, 45));
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.BUY, 120, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 0, 45));
         verify(eventPublisher).publish(any(OrderAcceptedEvent.class));
-        assertThat(security.getOrderBook().findByOrderId(Side.BUY, 10).getQuantity()).isEqualTo(50);
+        assertThat(security.getOrderBook().findByOrderId(Side.BUY, 10).getQuantity()).isEqualTo(70);
+        assertThat(security.getOrderBook().findByOrderId(Side.SELL, 6)).isNull();
     }
 
     @Test
@@ -675,6 +661,37 @@ public class OrderHandlerTest {
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.SELL, 100, 540, broker1.getBrokerId(), shareholder.getShareholderId(), 0, 45));
         verify(eventPublisher).publish(any(OrderAcceptedEvent.class));
         assertThat(security.getOrderBook().findByOrderId(Side.SELL, 10).getQuantity()).isEqualTo(50);
+        assertThat(security.getOrderBook().findByOrderId(Side.BUY, 3)).isNull();
+    }
+
+    @Test
+    void update_min_exec_quantity_in_buy_order_after_satisfied_is_rejected() {
+        broker3.increaseCreditBy(100_000);
+        List<Order> orders = Arrays.asList(
+                new Order(3, security, Side.BUY, 50, 545, broker3, shareholder),
+                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+        );
+        orders.forEach(order -> security.getOrderBook().enqueue(order));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.BUY, 100, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 0, 45));
+        verify(eventPublisher).publish(any(OrderAcceptedEvent.class));
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10, LocalDateTime.now(), Side.BUY, 150, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 0, 50));
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.CANNOT_CHANGE_MINIMUM_EXEC_QUANTITY)));
+    }
+
+    @Test
+    void update_min_exec_quantity_in_sell_order_after_satisfied_is_rejected() {
+        broker3.increaseCreditBy(100_000);
+        List<Order> orders = Arrays.asList(
+                new Order(3, security, Side.BUY, 50, 545, broker3, shareholder),
+                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+        );
+        orders.forEach(order -> security.getOrderBook().enqueue(order));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.SELL, 120, 540, broker1.getBrokerId(), shareholder.getShareholderId(), 0, 45));
+        verify(eventPublisher).publish(any(OrderAcceptedEvent.class));
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10, LocalDateTime.now(), Side.SELL, 120, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 0, 50));
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.CANNOT_CHANGE_MINIMUM_EXEC_QUANTITY)));
     }
 
     @Test
@@ -747,5 +764,19 @@ public class OrderHandlerTest {
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.BUY, 100, 590, broker3.getBrokerId(), shareholder.getShareholderId(), 40, 50));
         verify(eventPublisher).publish(new OrderRejectedEvent(1, 10, List.of(Message.ORDER_MINIMUM_EXEC_QUANTITY_NOT_SATISFY)));
         assertThat(security.getOrderBook().findByOrderId(Side.SELL, 6).getQuantity()).isEqualTo(40);
+    }
+
+    @Test
+    void sell_iceberg_order_with_rejected_min_exec_rollbacks_correctly() {
+        broker3.increaseCreditBy(100_000);
+        List<Order> orders = Arrays.asList(
+                new Order(3, security, Side.BUY, 50, 545, broker3, shareholder),
+                new Order(6, security, Side.SELL, 40, 580, broker1, shareholder)
+        );
+        orders.forEach(order -> security.getOrderBook().enqueue(order));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10, LocalDateTime.now(), Side.SELL, 100, 540, broker1.getBrokerId(), shareholder.getShareholderId(), 40, 60));
+        verify(eventPublisher).publish(new OrderRejectedEvent(1, 10, List.of(Message.ORDER_MINIMUM_EXEC_QUANTITY_NOT_SATISFY)));
+        assertThat(security.getOrderBook().findByOrderId(Side.BUY, 3).getQuantity()).isEqualTo(50);
     }
 }

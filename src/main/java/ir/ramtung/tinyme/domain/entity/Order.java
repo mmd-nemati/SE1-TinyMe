@@ -147,5 +147,5 @@ public class Order {
         return minimumExecutionQuantity == 0 || (prevQuantity - quantity >= minimumExecutionQuantity);
     }
 
-    public void unmarkAsFirstEntry() { isFirstEntry = false; }
+    public void unmarkFirstEntry() { isFirstEntry = false; }
 }
