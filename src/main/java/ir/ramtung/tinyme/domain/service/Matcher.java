@@ -9,7 +9,6 @@ import java.util.ListIterator;
 @Service
 public class Matcher {
     public MatchResult match(Order newOrder) {
-        boolean min = newOrder.getStatus() == OrderStatus.NEW;
         int prevQuantity = newOrder.getQuantity();
         OrderBook orderBook = newOrder.getSecurity().getOrderBook();
         LinkedList<Trade> trades = new LinkedList<>();
@@ -45,7 +44,7 @@ public class Matcher {
                 newOrder.makeQuantityZero();
             }
         }
-        if (min && (prevQuantity - newOrder.getQuantity() < newOrder.getMinimumExecutionQuantity())) {
+        if (newOrder.isFirstEntry() && !newOrder.isMinExecQuantitySatisfied(prevQuantity)) {
             rollbackTrades(newOrder, trades);
             return MatchResult.notSatisfyMinExec();
         }
@@ -53,18 +52,29 @@ public class Matcher {
     }
 
     private void rollbackTrades(Order newOrder, LinkedList<Trade> trades) {
-        assert newOrder.getSide() == Side.BUY;
-        newOrder.getBroker().increaseCreditBy(trades.stream().mapToLong(Trade::getTradedValue).sum());
-        trades.forEach(trade -> trade.getSell().getBroker().decreaseCreditBy(trade.getTradedValue()));
+        if (newOrder.getSide() == Side.BUY) {
+            newOrder.getBroker().increaseCreditBy(trades.stream().mapToLong(Trade::getTradedValue).sum());
+            trades.forEach(trade -> trade.getSell().getBroker().decreaseCreditBy(trade.getTradedValue()));
 
-        ListIterator<Trade> it = trades.listIterator(trades.size());
-        while (it.hasPrevious()) {
-            newOrder.getSecurity().getOrderBook().restoreSellOrder(it.previous().getSell());
+            ListIterator<Trade> it = trades.listIterator(trades.size());
+            while (it.hasPrevious()) {
+                newOrder.getSecurity().getOrderBook().restoreSellOrder(it.previous().getSell());
+            }
+        }
+        else if (newOrder.getSide() == Side.SELL) {
+            newOrder.getBroker().decreaseCreditBy(trades.stream().mapToLong(Trade::getTradedValue).sum());
+            trades.forEach(trade -> trade.getBuy().getBroker().increaseCreditBy(trade.getTradedValue()));
+
+            ListIterator<Trade> it = trades.listIterator(trades.size());
+            while (it.hasPrevious()) {
+                newOrder.getSecurity().getOrderBook().restoreBuyOrder(it.previous().getBuy());
+            }
         }
     }
 
     public MatchResult execute(Order order) {
         MatchResult result = match(order);
+        order.unmarkAsFirstEntry();
         if (result.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT || result.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC)
             return result;
 
