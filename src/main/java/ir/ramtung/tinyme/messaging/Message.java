@@ -18,4 +18,5 @@ public class Message {
     public static final String ORDER_MINIMUM_EXEC_QUANTITY_BIGGER_THAN_QUANTITY = "Order minimum execution quantity is bigger than quantity";
     public static final String CANNOT_CHANGE_MINIMUM_EXEC_QUANTITY = "Cannot change minimum execution quantity in update request";
     public static final String ORDER_MINIMUM_EXEC_QUANTITY_NOT_SATISFY = "Order minimum execution quantity isn't satisfied";
+    public static final String STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY = "Stop orders cannot have minimum execution quantity";
 }
