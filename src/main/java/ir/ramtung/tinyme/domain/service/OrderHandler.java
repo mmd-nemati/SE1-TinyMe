@@ -101,6 +101,7 @@ public class OrderHandler {
                 errors.add(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY);
             if(enterOrderRq.getPeakSize() != 0)
                 errors.add(Message.STOP_ORDER_IS_ICEBERG_TOO);
+
         }
         Security security = securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin());
         if (security == null)
