@@ -26,10 +26,13 @@ public class Order {
     protected OrderStatus status = OrderStatus.NEW;
     @Builder.Default
     protected int minimumExecutionQuantity = 0;
+
+    @Builder.Default
+    protected int stopPrice = 0;
     @Builder.Default
     protected boolean isFirstEntry = true;
 
-    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status, int minimumExecutionQuantity, boolean isFirstEntry) {
+    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status, int minimumExecutionQuantity, int stopPrice, boolean isFirstEntry) {
         this.orderId = orderId;
         this.security = security;
         this.side = side;
@@ -40,10 +43,11 @@ public class Order {
         this.shareholder = shareholder;
         this.status = status;
         this.minimumExecutionQuantity = minimumExecutionQuantity;
+        this.stopPrice = stopPrice;
         this.isFirstEntry = isFirstEntry;
     }
 
-    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status, int minimumExecutionQuantity) {
+    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status, int minimumExecutionQuantity, int stopPrice) {
         this.orderId = orderId;
         this.security = security;
         this.side = side;
@@ -54,6 +58,7 @@ public class Order {
         this.shareholder = shareholder;
         this.status = status;
         this.minimumExecutionQuantity = minimumExecutionQuantity;
+        this.stopPrice = stopPrice;
         this.isFirstEntry = true;
     }
 

@@ -40,6 +40,7 @@ public class OrderHandler {
         try {
             validateEnterOrderRq(enterOrderRq);
 
+            disabledOrders.addOrder(enterOrderRq);
             Security security = securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin());
             Broker broker = brokerRepository.findBrokerById(enterOrderRq.getBrokerId());
             Shareholder shareholder = shareholderRepository.findShareholderById(enterOrderRq.getShareholderId());
