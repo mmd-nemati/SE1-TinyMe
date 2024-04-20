@@ -20,4 +20,5 @@ public class Message {
     public static final String ORDER_MINIMUM_EXEC_QUANTITY_NOT_SATISFY = "Order minimum execution quantity isn't satisfied";
     public static final String STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY = "Stop orders cannot have minimum execution quantity";
     public static final String STOP_ORDER_IS_ICEBERG_TOO = "Stop orders cannot be iceberg too";
+    public static final String STOP_PRICE_NEGATIVE = "Stop price cannot be negative";
 }

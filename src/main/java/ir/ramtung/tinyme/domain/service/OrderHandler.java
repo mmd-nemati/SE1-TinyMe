@@ -95,6 +95,8 @@ public class OrderHandler {
         if (enterOrderRq.getMinimumExecutionQuantity() > enterOrderRq.getQuantity())
             errors.add(Message.ORDER_MINIMUM_EXEC_QUANTITY_BIGGER_THAN_QUANTITY);
         if (enterOrderRq.getStopPrice() != 0){
+            if(enterOrderRq.getStopPrice() < 0)
+                errors.add(Message.STOP_PRICE_NEGATIVE);
             if(enterOrderRq.getMinimumExecutionQuantity() != 0)
                 errors.add(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY);
             if(enterOrderRq.getPeakSize() != 0)
