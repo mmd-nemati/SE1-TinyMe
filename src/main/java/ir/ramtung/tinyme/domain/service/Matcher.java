@@ -1,6 +1,7 @@
 package ir.ramtung.tinyme.domain.service;
 
 import ir.ramtung.tinyme.domain.entity.*;
+import ir.ramtung.tinyme.repository.EnterOrderRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedList;
@@ -8,6 +9,7 @@ import java.util.ListIterator;
 
 @Service
 public class Matcher {
+    private int lastTradePrice = 0;
     public MatchResult match(Order newOrder) {
         int prevQuantity = newOrder.getQuantity();
         OrderBook orderBook = newOrder.getSecurity().getOrderBook();
@@ -93,6 +95,7 @@ public class Matcher {
                 trade.getBuy().getShareholder().incPosition(trade.getSecurity(), trade.getQuantity());
                 trade.getSell().getShareholder().decPosition(trade.getSecurity(), trade.getQuantity());
             }
+            lastTradePrice = result.trades().getLast().getPrice();
         }
         return result;
     }
