@@ -16,6 +16,9 @@ public final class MatchResult {
     public static MatchResult notEnoughCredit() {
         return new MatchResult(MatchingOutcome.NOT_ENOUGH_CREDIT, null, new LinkedList<>());
     }
+    public static MatchResult accepted(){
+        return new MatchResult(MatchingOutcome.ACCEPTED, null, new LinkedList<>());
+    }
     public static MatchResult notEnoughPositions() {
         return new MatchResult(MatchingOutcome.NOT_ENOUGH_POSITIONS, null, new LinkedList<>());
     }

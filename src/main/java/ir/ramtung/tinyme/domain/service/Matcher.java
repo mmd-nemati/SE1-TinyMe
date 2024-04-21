@@ -75,6 +75,19 @@ public class Matcher {
     }
 
     public MatchResult execute(Order order) {
+        if (order.getStopPrice != 0) {
+            if (order.getSide() == Side.BUY) {
+                if (!order.getBroker().hasEnoughCredit(order.getValue()))
+                    return MatchResult.notEnoughCredit();
+                if(order.getStopPrice() > lastTradePrice)
+                    return MatchResult.accepted();
+            }
+            else {
+                if(order.getStopPrice() < lastTradePrice)
+                    return MatchResult.accepted();
+            }
+        }
+
         MatchResult result = match(order);
         order.unmarkFirstEntry();
         if (result.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT || result.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC)
@@ -100,4 +113,11 @@ public class Matcher {
         return result;
     }
 
+    public MatchResult executeStopPrice(Order order) {
+        if (order.getStopPrice != 0 && order.getSide() == Side.BUY) {
+            if (!order.getBroker().hasEnoughCredit(order.getValue())) {
+                return MatchResult.notEnoughCredit();
+            }
+        }
+    }
 }

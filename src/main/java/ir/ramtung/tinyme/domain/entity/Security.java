@@ -43,8 +43,12 @@ public class Security {
                     enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW, enterOrderRq.getMinimumExecutionQuantity());
 
         MatchResult result = matcher.execute(order);
-        if(result.outcome() == MatchingOutcome.ACCEPTED){
+        if(result.outcome() == MatchingOutcome.ACCEPTED)
                 disabledOrders.addOrder(order);
+        else if(result.outcome() == MatchingOutcome.EXECUTED){
+            if(disabledOrders.exist(order.getOrderId())){
+                disabledOrders.removeById(order.getOrderId());
+            }
         }
         return result;
     }
