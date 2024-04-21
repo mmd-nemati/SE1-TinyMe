@@ -23,9 +23,9 @@ public class Security {
     @Builder.Default
     private OrderBook orderBook = new OrderBook();
 
-    @Builder.Default
+
     EnterOrderRqRepo disabledOrderRqs;
-    @Builder.Default
+
     EnterOrderRqRepo enabledOrderRqs;
 
     @Builder.Default
