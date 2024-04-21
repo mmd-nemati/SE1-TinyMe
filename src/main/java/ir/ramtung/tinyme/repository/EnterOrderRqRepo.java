@@ -8,16 +8,16 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 
 @Component
-public class OrderRepository {
-    private final HashMap<String, Order> orderById = new HashMap<>();
-    public Order findOrderById(String id) {
+public class EnterOrderRqRepo {
+    private final HashMap<String, EnterOrderRq> orderById = new HashMap<>();
+    public EnterOrderRq findOrderRqById(String id) {
         return orderById.get(id);
     }
-    public void addOrder(Order order) {orderById.put(order.getOrderId(), order);}
+    public void addOrderRq(EnterOrderRq orderRq) {orderById.put(orderRq.getOrderId(), orderRq);}
     public void clear() {
         orderById.clear();
     }
     public void removeById(String id) { orderById.remove(id); }
     public boolean exist(String id) { return(orderById.containsKey(id)); }
-    Iterable<? extends Order> allOrders() { return orderById.values(); }
+    Iterable<? extends EnterOrderRq> allOrders() { return orderById.values(); }
 }

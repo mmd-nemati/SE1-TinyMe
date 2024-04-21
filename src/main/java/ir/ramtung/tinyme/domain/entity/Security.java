@@ -5,7 +5,7 @@ import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.messaging.Message;
-import ir.ramtung.tinyme.repository.OrderRepository;
+import ir.ramtung.tinyme.repository.EnterOrderRqRepo;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -23,9 +23,9 @@ public class Security {
     private OrderBook orderBook = new OrderBook();
 
     @Builder.Default
-    OrderRepository disabledOrders;
+    EnterOrderRqRepo disabledOrderRqs;
     @Builder.Default
-    OrderRepository enabledOrders;
+    EnterOrderRqRepo enabledOrderRqs;
 
     @Builder.Default
     int lastTradePrice = 0;
@@ -48,7 +48,7 @@ public class Security {
 
         MatchResult result = matcher.execute(order);
         if(result.outcome() == MatchingOutcome.ACCEPTED)
-                disabledOrders.addOrder(order);
+                disabledOrderRqs.addOrderRq(enterOrderRq);
         return result;
     }
 
@@ -105,12 +105,12 @@ public class Security {
         }
         return matchResult;
     }
-    /*public void handleDisabledOrders(){
-        for(Order disabled : disabledOrders){
+   /*public void handleDisabledOrders(){
+        for(EnterOrderRq disabled : disabledOrderRqs){
             if(disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice){
-                disabledOrders.removeById(disabled.getOrderId());
-                if(!enabledOrders.exist(disabled.getOrderId()))
-                    enabledOrders.addOrder(disabled);
+                disabledOrderRqs.removeById(disabled.getOrderId());
+                if(!enabledOrderRqs.exist(disabled.getOrderId()))
+                    enabledOrderRqs.addOrder(disabled);
             }
         }
     }*/
