@@ -5,7 +5,6 @@ import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.messaging.Message;
-import ir.ramtung.tinyme.repository.EnterOrderRepository;
 import ir.ramtung.tinyme.repository.OrderRepository;
 import lombok.Builder;
 import lombok.Getter;
@@ -50,11 +49,6 @@ public class Security {
         MatchResult result = matcher.execute(order);
         if(result.outcome() == MatchingOutcome.ACCEPTED)
                 disabledOrders.addOrder(order);
-        else if(result.outcome() == MatchingOutcome.EXECUTED || result.outcome() == MatchingOutcome.ACTIVATED){
-            if(disabledOrders.exist(order.getOrderId())){
-                disabledOrders.removeById(order.getOrderId());
-            }
-        }
         return result;
     }
 
@@ -111,7 +105,7 @@ public class Security {
         }
         return matchResult;
     }
-    public void handledisabledOrders(){
+    /*public void handleDisabledOrders(){
         for(Order disabled : disabledOrders){
             if(disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice){
                 disabledOrders.removeById(disabled.getOrderId());
@@ -119,5 +113,8 @@ public class Security {
                     enabledOrders.addOrder(disabled);
             }
         }
+    }*/
+    public void updateLastTradePrice(int lastTradePrice){
+        this.lastTradePrice = lastTradePrice;
     }
 }

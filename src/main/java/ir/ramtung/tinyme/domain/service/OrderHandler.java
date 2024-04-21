@@ -10,7 +10,6 @@ import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.messaging.request.OrderEntryType;
 import ir.ramtung.tinyme.repository.BrokerRepository;
-import ir.ramtung.tinyme.repository.EnterOrderRepository;
 import ir.ramtung.tinyme.repository.SecurityRepository;
 import ir.ramtung.tinyme.repository.ShareholderRepository;
 import org.springframework.stereotype.Service;
@@ -70,7 +69,8 @@ public class OrderHandler {
                 if(enterOrderRq.getStopPrice() != 0)
                     eventPublisher.publish(new OrderActivatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
                 eventPublisher.publish(new OrderExecutedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
-                security.handledisabledOrders();
+                security.updateLastTradePrice(matchResult.trades().getLast().getPrice());
+               // security.handleDisabledOrders();
             }
         } catch (InvalidRequestException ex) {
             eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), ex.getReasons()));
