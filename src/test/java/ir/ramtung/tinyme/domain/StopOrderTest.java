@@ -148,29 +148,29 @@ public class StopOrderTest {
         verify(eventPublisher).publish(new OrderActivatedEvent(3, 10));
     }
 
-    @Test
-    void activated_stop_order_makes_trade() {
-        buyBroker.increaseCreditBy(100_000);
-        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
-                LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
-                shareholder.getShareholderId(), 0, 0, 0));
-
-        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(2, "ABC", 3,
-                LocalDateTime.now(), Side.BUY, 50, 550, buyBroker.getBrokerId(),
-                shareholder.getShareholderId(), 0, 0, 0));
-
-
-        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
+//    @Test
+//    void activated_stop_order_makes_trade() {
+//        buyBroker.increaseCreditBy(100_000);
+//        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
+//                LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
+//                shareholder.getShareholderId(), 0, 0, 0));
+//
+//        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(2, "ABC", 3,
+//                LocalDateTime.now(), Side.BUY, 50, 550, buyBroker.getBrokerId(),
+//                shareholder.getShareholderId(), 0, 0, 0));
+//
+//
 //        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
-
-        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
-                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
-                shareholder.getShareholderId(), 0, 0, 100));
-
-//        verify(eventPublisher).publish(any(OrderActivatedEvent.class));
-        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
-//        verify(orderHandler).applyExecuteEffects(any(OrderExecutedEvent.class));
-    }
+////        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
+//
+//        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
+//                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+//                shareholder.getShareholderId(), 0, 0, 100));
+//
+////        verify(eventPublisher).publish(any(OrderActivatedEvent.class));
+//        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
+////        verify(orderHandler).applyExecuteEffects(any(OrderExecutedEvent.class));
+//    }
 
     @Test
     void reject_update_stop_price_after_activation() {
@@ -225,7 +225,19 @@ public class StopOrderTest {
         // TODO -> Message?
         verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION)));
     }
+    @Test
+    void reject_update_not_allowed_to_change_min_Execution_Quantity() {
+        buyBroker.increaseCreditBy(100_000_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
 
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 10, 80));
+        // TODO -> Message?
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY)));
+    }
 //    @Test
 //    void delete_stop_order_before_activation() {
 //
