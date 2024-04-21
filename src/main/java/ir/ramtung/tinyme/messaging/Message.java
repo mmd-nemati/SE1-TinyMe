@@ -21,4 +21,6 @@ public class Message {
     public static final String STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY = "Stop orders cannot have minimum execution quantity";
     public static final String STOP_ORDER_IS_ICEBERG_TOO = "Stop orders cannot be iceberg too";
     public static final String STOP_PRICE_NEGATIVE = "Stop price cannot be negative";
+    public static final String CANNOT_CHANGE_STOP_PRICE_FOR_ACTIVATED = "Stop price of activated orders can't change";
+    public static final String CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION = "One or more parameters cannot be changed before activation.";
 }

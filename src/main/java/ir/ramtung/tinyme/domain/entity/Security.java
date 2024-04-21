@@ -5,6 +5,7 @@ import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.messaging.Message;
+import ir.ramtung.tinyme.repository.EnterOrderRepo;
 import ir.ramtung.tinyme.repository.EnterOrderRqRepo;
 import lombok.Builder;
 import lombok.Getter;
@@ -37,6 +38,12 @@ public class Security {
     EnterOrderRqRepo sellEnabledRqs = new EnterOrderRqRepo(DESENDING);
 
     @Builder.Default
+    EnterOrderRepo buyDisabledOrders = new EnterOrderRepo(ASCENDING);
+
+    @Builder.Default
+    EnterOrderRepo sellDisabledOrders = new EnterOrderRepo(DESENDING);
+
+    @Builder.Default
     int lastTradePrice = 0;
 
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) {
@@ -57,10 +64,14 @@ public class Security {
 
         MatchResult result = matcher.execute(order, lastTradePrice);
         if(result.outcome() == MatchingOutcome.ACCEPTED){
-            if(enterOrderRq.getSide() == Side.BUY)
+            if(enterOrderRq.getSide() == Side.BUY) {
                 buyDisabledRqs.addOrderRq(enterOrderRq);
-            else
+                buyDisabledOrders.addOrder(order);
+            }
+            else {
                 sellDisabledRqs.addOrderRq(enterOrderRq);
+                sellDisabledOrders.addOrder(order);
+            }
         }
 
         return result;
@@ -77,15 +88,36 @@ public class Security {
 
     public MatchResult updateOrder(EnterOrderRq updateOrderRq, Matcher matcher) throws InvalidRequestException {
         Order order = orderBook.findByOrderId(updateOrderRq.getSide(), updateOrderRq.getOrderId());
-        if (order == null)
-            throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
+        if (order == null) {
+            if (buyDisabledRqs.exist(updateOrderRq.getOrderId()))
+                order = buyDisabledOrders.findOrderById(updateOrderRq.getOrderId());
+            else if (sellDisabledOrders.exist(updateOrderRq.getOrderId()))
+                order = sellDisabledOrders.findOrderById(updateOrderRq.getOrderId());
+            else
+////            order = buyDisabledRqs.findOrderRqById(updateOrderRq.getOrderId());
+//            if (buyDisabledRqs.ge)
+            if (!buyDisabledRqs.exist(updateOrderRq.getOrderId()) && !sellDisabledRqs.exist(updateOrderRq.getOrderId()))
+                throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
+        }
+//            throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
+
         if ((order instanceof IcebergOrder) && updateOrderRq.getPeakSize() == 0)
             throw new InvalidRequestException(Message.INVALID_PEAK_SIZE);
         if (!(order instanceof IcebergOrder) && updateOrderRq.getPeakSize() != 0)
             throw new InvalidRequestException(Message.CANNOT_SPECIFY_PEAK_SIZE_FOR_A_NON_ICEBERG_ORDER);
         if (order.getMinimumExecutionQuantity() != updateOrderRq.getMinimumExecutionQuantity())
             throw new InvalidRequestException(Message.CANNOT_CHANGE_MINIMUM_EXEC_QUANTITY);
+        if (order.getStopPrice() == 0 && updateOrderRq.getStopPrice() != 0)
+            throw new InvalidRequestException(Message.CANNOT_CHANGE_STOP_PRICE_FOR_ACTIVATED);
 
+        if (order.getStopPrice() != 0) {
+            if (updateOrderRq.getPeakSize() != 0)
+                throw new InvalidRequestException(Message.STOP_ORDER_IS_ICEBERG_TOO);
+            if (updateOrderRq.getMinimumExecutionQuantity() != 0)
+                throw new InvalidRequestException(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY);
+            if (!order.isAllowedToUpdateStopLimitOrder(updateOrderRq.getOrderId(), updateOrderRq.getSecurityIsin(), updateOrderRq.getBrokerId(), updateOrderRq.getSide(), updateOrderRq.getShareholderId()))
+                throw new InvalidRequestException(Message.CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION);
+        }
         if (updateOrderRq.getSide() == Side.SELL &&
                 !order.getShareholder().hasEnoughPositionsOn(this,
                 orderBook.totalSellQuantityByShareholder(order.getShareholder()) - order.getQuantity() + updateOrderRq.getQuantity()))
@@ -128,6 +160,7 @@ public class Security {
             for (EnterOrderRq buyDisabled : buyDisabledRqs.allOrderRqs()) {
                 if (buyDisabled.getStopPrice() <= lastTradePrice) {
                     buyDisabledRqs.removeById(buyDisabled.getOrderId());
+                    buyDisabledOrders.removeById(buyDisabled.getOrderId());
                     if (!buyEnabledRqs.exist(buyDisabled.getOrderId()))
                         buyEnabledRqs.addOrderRq(buyDisabled);
                 }
@@ -149,6 +182,7 @@ public class Security {
             for (EnterOrderRq sellDisabled : sellDisabledRqs.allOrderRqs()) {
                 if (sellDisabled.getStopPrice() >= lastTradePrice) {
                     sellDisabledRqs.removeById(sellDisabled.getOrderId());
+                    sellDisabledOrders.removeById(sellDisabled.getOrderId());
                     if (!sellEnabledRqs.exist(sellDisabled.getOrderId()))
                         sellEnabledRqs.addOrderRq(sellDisabled);
                 }

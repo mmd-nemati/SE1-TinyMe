@@ -174,7 +174,7 @@ public class StopOrderTest {
 
     @Test
     void reject_update_stop_price_after_activation() {
-        buyBroker.increaseCreditBy(100_000);
+        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
                 LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 0));
@@ -184,19 +184,22 @@ public class StopOrderTest {
                 shareholder.getShareholderId(), 0, 0, 0));
 
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
-                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                LocalDateTime.now(), Side.BUY, 200, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
         verify(eventPublisher).publish(any(OrderActivatedEvent.class));
 
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(4, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 20));
-        // TODO -> Message: Can't change after activation
-        verify(eventPublisher).publish(any(OrderRejectedEvent.class));
+
+        verify(eventPublisher).publish(new OrderRejectedEvent(4, 10, List.of(Message.CANNOT_CHANGE_STOP_PRICE_FOR_ACTIVATED)));
     }
 
+//    @Test
+//    void reject_
     @Test
     void accept_update_before_activation() {
+        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -204,22 +207,24 @@ public class StopOrderTest {
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 10, 570, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 120));
-        // TODO -> Message?
+
         verify(eventPublisher).publish(any(OrderUpdatedEvent.class));
     }
 
-//    @Test
-//    void reject_update_not_allowed_fields_after_activation() {
-//        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
-//                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
-//                shareholder.getShareholderId(), 0, 0, 100));
-//
-//        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10,
-//                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
-//                shareholder.getShareholderId(), 0, 0, 100));
-//        // TODO -> Message?
-//        verify(eventPublisher).publish(any(OrderUpdatedEvent.class));
-//    }
+
+    @Test
+    void reject_update_not_allowed_fields_before_activation() {
+        buyBroker.increaseCreditBy(100_000_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10,
+                LocalDateTime.now(), Side.SELL, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 80));
+        // TODO -> Message?
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION)));
+    }
 
 //    @Test
 //    void delete_stop_order_before_activation() {

@@ -185,13 +185,12 @@ public class Order {
 
     public void setStopPriceZero() { stopPrice = 0; }
 
-    public boolean isAllowedToUpdateStopLimitOrder(int orderId, String Isin, long brokerId, Side side,
-                                                   long shareholderId, LocalDateTime entryTime) {
+    public boolean isAllowedToUpdateStopLimitOrder(long orderId, String Isin, long brokerId, Side side,
+                                                   long shareholderId) {
         return  orderId == this.orderId &&
                 Objects.equals(Isin, this.security.getIsin()) &&
                 side == this.side &&
                 shareholderId == this.shareholder.getShareholderId() &&
-                entryTime == this.entryTime &&
                 brokerId == this.broker.getBrokerId();
     }
 }
