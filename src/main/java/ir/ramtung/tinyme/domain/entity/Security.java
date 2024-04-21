@@ -110,7 +110,8 @@ public class Security {
         if(disabledOrderRqs == null)
             return;
         for(EnterOrderRq disabled : disabledOrderRqs.allOrderRqs()){
-            if(disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice){
+            if((disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice) ||
+                    (disabled.getSide() == Side.SELL && disabled.getStopPrice() >= lastTradePrice)){
                 disabledOrderRqs.removeById(disabled.getOrderId());
                 if(!enabledOrderRqs.exist(disabled.getOrderId()))
                     enabledOrderRqs.addOrderRq(disabled);
