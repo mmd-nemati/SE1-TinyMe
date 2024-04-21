@@ -280,7 +280,7 @@ public class StopOrderTest {
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
-//
+
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(4, "ABC", 11,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 120));
@@ -301,8 +301,55 @@ public class StopOrderTest {
         verify(eventPublisher).publish(new OrderActivatedEvent(5, 12));
         verify(eventPublisher).publish(new OrderActivatedEvent(4, 11));
     }
+    @Test
+    void activated_stop_order_publishes_executed_after_trade() {
+        buyBroker.increaseCreditBy(100_000);
+        security.updateLastTradePrice(300);
+        Order o1 = new Order(6, security, Side.SELL, 150, 545, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o2 = new Order(10, security, Side.BUY, 25, 580, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 100);
+        Order o3 = new Order(11, security, Side.BUY, 25, 580, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 110);
+        Order o4 = new Order(12, security, Side.BUY, 25, 580, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 110);
 
+        Trade t1 = new Trade(security, 545, 25, o1, o2);
+        Trade t2 = new Trade(security, 545, 25, o1, o3);
+        Trade t3 = new Trade(security, 545, 25, o1, o4);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
+                LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
 
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(4, "ABC", 11,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 120));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(5, "ABC", 12,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 130));
+
+        verify(eventPublisher).publish(new OrderExecutedEvent(3, 10, List.of(new TradeDTO(t1))));
+        verify(eventPublisher).publish(new OrderExecutedEvent(4, 11, List.of(new TradeDTO(t2))));
+        verify(eventPublisher).publish(new OrderExecutedEvent(5, 12, List.of(new TradeDTO(t3))));
+    }
+    @Test
+    void update_stop_order_before_activation_not_found() {
+        buyBroker.increaseCreditBy(100_000_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 12,
+                LocalDateTime.now(), Side.SELL, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 80));
+
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 12, List.of(Message.ORDER_ID_NOT_FOUND)));
+    }
 //    @Test
 //    void delete_stop_order_before_activation() {
 //
