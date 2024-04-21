@@ -25,9 +25,9 @@ public class Security {
     private OrderBook orderBook = new OrderBook();
 
     @Builder.Default
-    EnterOrderRqRepo disabledOrderRqs = new HashMap<>();
+    EnterOrderRqRepo disabledOrderRqs = new EnterOrderRqRepo();
     @Builder.Default
-    EnterOrderRqRepo enabledOrderRqs = new HashMap<>();
+    EnterOrderRqRepo enabledOrderRqs = new EnterOrderRqRepo();;
 
     @Builder.Default
     int lastTradePrice = 0;
