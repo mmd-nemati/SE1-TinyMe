@@ -181,4 +181,6 @@ public class Order {
     }
 
     public void unmarkFirstEntry() { isFirstEntry = false; }
+
+    public void setStopPriceZero() { stopPrice = 0; }
 }

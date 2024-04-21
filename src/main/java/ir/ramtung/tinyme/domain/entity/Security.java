@@ -47,7 +47,7 @@ public class Security {
                     enterOrderRq.getQuantity(), enterOrderRq.getPrice(), broker, shareholder,
                     enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW, enterOrderRq.getMinimumExecutionQuantity());
 
-        MatchResult result = matcher.execute(order);
+        MatchResult result = matcher.execute(order, lastTradePrice);
         if(result.outcome() == MatchingOutcome.ACCEPTED)
                 disabledOrderRqs.addOrderRq(enterOrderRq);
         return result;
@@ -97,7 +97,7 @@ public class Security {
             order.markAsNew();
 
         orderBook.removeByOrderId(updateOrderRq.getSide(), updateOrderRq.getOrderId());
-        MatchResult matchResult = matcher.execute(order);
+        MatchResult matchResult = matcher.execute(order, lastTradePrice);
         if (matchResult.outcome() != MatchingOutcome.EXECUTED) {
             orderBook.enqueue(originalOrder);
             if (updateOrderRq.getSide() == Side.BUY) {

@@ -8,7 +8,6 @@ import java.util.ListIterator;
 
 @Service
 public class Matcher {
-    private int lastTradePrice = 0;
     public MatchResult match(Order newOrder) {
         int prevQuantity = newOrder.getQuantity();
         OrderBook orderBook = newOrder.getSecurity().getOrderBook();
@@ -73,13 +72,25 @@ public class Matcher {
         }
     }
 
-    public MatchResult execute(Order order) {
-        if (order.getStopPrice() != 0 && order.getSide() == Side.BUY) {
-                if (!order.getBroker().hasEnoughCredit(order.getValue()))
-                    return MatchResult.notEnoughCredit();
-            }
+    private MatchResult canExecute(Order order, int lastTradePrice){
+        if (order.getSide() == Side.BUY) {
+            if (!order.getBroker().hasEnoughCredit(order.getValue()))
+                return MatchResult.notEnoughCredit();
+            if(order.getStopPrice() > lastTradePrice)
+                return(MatchResult.accepted());
+        }
+        if(order.getSide() == Side.SELL){
+            if(order.getStopPrice() < lastTradePrice)
+                return(MatchResult.accepted());
+        }
+        return(MatchResult.activated());
+    }
 
+
+
+    public MatchResult execute(Order order) {
         MatchResult result = match(order);
+
         order.unmarkFirstEntry();
         if (result.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT || result.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC)
             return result;
@@ -103,6 +114,17 @@ public class Matcher {
         if(order.getStopPrice() != 0 && result.trades().isEmpty())
             return MatchResult.activated();
         return result;
+    }
+
+    public MatchResult execute(Order order, int lastTradePrice){
+        MatchResult result;
+        if(order.getStopPrice() != 0) {
+            result = canExecute(order, lastTradePrice);
+            if(result.outcome() != MatchingOutcome.ACTIVATED)
+                return(result);
+            order.setStopPriceZero();
+        }
+        return(execute(order));
     }
 
 }
