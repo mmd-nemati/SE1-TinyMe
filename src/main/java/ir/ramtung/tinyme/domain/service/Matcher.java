@@ -110,6 +110,8 @@ public class Matcher {
             }
             lastTradePrice = result.trades().getLast().getPrice();
         }
+        if(order.getStopPrice != 0 && result.trades().isEmpty())
+            return MatchResult.activated();
         return result;
     }
 

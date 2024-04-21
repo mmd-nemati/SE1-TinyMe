@@ -45,7 +45,7 @@ public class Security {
         MatchResult result = matcher.execute(order);
         if(result.outcome() == MatchingOutcome.ACCEPTED)
                 disabledOrders.addOrder(order);
-        else if(result.outcome() == MatchingOutcome.EXECUTED){
+        else if(result.outcome() == MatchingOutcome.EXECUTED || result.outcome() == MatchingOutcome.ACTIVATED){
             if(disabledOrders.exist(order.getOrderId())){
                 disabledOrders.removeById(order.getOrderId());
             }
