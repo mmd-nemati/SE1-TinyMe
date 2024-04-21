@@ -74,7 +74,7 @@ public class Matcher {
     }
 
     public MatchResult execute(Order order) {
-        if (order.getStopPrice != 0 && order.getSide() == Side.BUY) {
+        if (order.getStopPrice() != 0 && order.getSide() == Side.BUY) {
                 if (!order.getBroker().hasEnoughCredit(order.getValue()))
                     return MatchResult.notEnoughCredit();
             }
@@ -100,16 +100,9 @@ public class Matcher {
                 trade.getSell().getShareholder().decPosition(trade.getSecurity(), trade.getQuantity());
             }
         }
-        if(order.getStopPrice != 0 && result.trades().isEmpty())
+        if(order.getStopPrice() != 0 && result.trades().isEmpty())
             return MatchResult.activated();
         return result;
     }
 
-    public MatchResult executeStopPrice(Order order) {
-        if (order.getStopPrice != 0 && order.getSide() == Side.BUY) {
-            if (!order.getBroker().hasEnoughCredit(order.getValue())) {
-                return MatchResult.notEnoughCredit();
-            }
-        }
-    }
 }

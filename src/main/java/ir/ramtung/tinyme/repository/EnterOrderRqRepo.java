@@ -9,15 +9,15 @@ import java.util.HashMap;
 
 @Component
 public class EnterOrderRqRepo {
-    private final HashMap<String, EnterOrderRq> orderById = new HashMap<>();
-    public EnterOrderRq findOrderRqById(String id) {
+    private final HashMap<Long, EnterOrderRq> orderById = new HashMap<>();
+    public EnterOrderRq findOrderRqById(Long id) {
         return orderById.get(id);
     }
     public void addOrderRq(EnterOrderRq orderRq) {orderById.put(orderRq.getOrderId(), orderRq);}
     public void clear() {
         orderById.clear();
     }
-    public void removeById(String id) { orderById.remove(id); }
-    public boolean exist(String id) { return(orderById.containsKey(id)); }
+    public void removeById(Long id) { orderById.remove(id); }
+    public boolean exist(Long id) { return(orderById.containsKey(id)); }
     Iterable<? extends EnterOrderRq> allOrders() { return orderById.values(); }
 }
