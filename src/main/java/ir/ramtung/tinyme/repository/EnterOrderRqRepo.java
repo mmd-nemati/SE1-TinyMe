@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-@Component
 public class EnterOrderRqRepo {
     private final HashMap<Long, EnterOrderRq> orderById;
     boolean ascendingStore;
@@ -18,7 +17,23 @@ public class EnterOrderRqRepo {
     public EnterOrderRq findOrderRqById(Long id) {
         return orderById.get(id);
     }
-    public void addOrderRq(EnterOrderRq orderRq) { orderById.put(orderRq.getOrderId(), orderRq); }
+    public void addOrderRq(EnterOrderRq orderRq) {
+        if(orderById.isEmpty())
+            orderById.put(orderRq.getOrderId(), orderRq);
+        else{
+            for(EnterOrderRq rq : orderById.values()){
+                if(ascendingStore && (rq.getStopPrice() > orderRq.getStopPrice())){
+                    orderById.put(orderRq.getOrderId(), orderRq);
+                    return;
+                }
+                if(!ascendingStore && (rq.getStopPrice() < orderRq.getStopPrice())){
+                    orderById.put(orderRq.getOrderId(), orderRq);
+                    return;
+                }
+            }
+        }
+        orderById.put(orderRq.getOrderId(), orderRq);
+    }
     public void clear() {
         orderById.clear();
     }

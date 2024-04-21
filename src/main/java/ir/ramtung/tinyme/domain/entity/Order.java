@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Builder
 @EqualsAndHashCode
@@ -183,4 +184,19 @@ public class Order {
     public void unmarkFirstEntry() { isFirstEntry = false; }
 
     public void setStopPriceZero() { stopPrice = 0; }
+
+    public boolean isAllowedToUpdateStopLimitOrder(Order O) {
+        return O.orderId == this.orderId &&
+                Objects.equals(O.security.getIsin(), this.security.getIsin()) &&
+                O.side == this.side &&
+                O.quantity == this.quantity &&
+                O.price == this.price &&
+                O.shareholder.getShareholderId() == this.shareholder.getShareholderId() &&
+                O.entryTime == this.entryTime &&
+                O.status == this.status &&
+                O.minimumExecutionQuantity == this.minimumExecutionQuantity &&
+                O.stopPrice == this.stopPrice &&
+                O.isFirstEntry == this.isFirstEntry;
+    }
 }
+
