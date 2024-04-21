@@ -64,11 +64,14 @@ public class OrderHandler {
                 eventPublisher.publish(new OrderAcceptedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
             else
                 eventPublisher.publish(new OrderUpdatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
-            if(matchResult.outcome() == MatchingOutcome.ACTIVATED)
+            if(matchResult.outcome() == MatchingOutcome.ACTIVATED) {
+                enterOrderRq.setStopPriceZero();
                 eventPublisher.publish(new OrderActivatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
+            }
             if (!matchResult.trades().isEmpty()) {
                 if(enterOrderRq.getStopPrice() != 0)
                     eventPublisher.publish(new OrderActivatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
+                enterOrderRq.setStopPriceZero();
                 applyExecuteEffects(enterOrderRq, security, matchResult);
                 executeEnabledOrders(security, broker, shareholder);
             }
@@ -143,12 +146,8 @@ public class OrderHandler {
         for(EnterOrderRq rq : security.getEnabledOrderRqs().allOrderRqs()){
             security.removeEnabledOrder(rq.getOrderId());
             eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
-
-            EnterOrderRq newEnterOrderRq = EnterOrderRq.createNewOrderRq(rq.getRequestId(),
-                    security.getIsin(), rq.getOrderId(), LocalDateTime.now(), rq.getSide(),
-                    rq.getQuantity(), rq.getPrice(), broker.getBrokerId(),
-                    shareholder.getShareholderId(), rq.getPeakSize());
-            MatchResult matchResult = security.newOrder(newEnterOrderRq, broker, shareholder, matcher);
+            rq.setStopPriceZero();
+            MatchResult matchResult = security.newOrder(rq, broker, shareholder, matcher);
             if (!matchResult.trades().isEmpty()) {
                 applyExecuteEffects(rq, security, matchResult);
             }

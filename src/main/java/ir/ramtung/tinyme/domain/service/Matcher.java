@@ -86,8 +86,6 @@ public class Matcher {
         return(MatchResult.activated());
     }
 
-
-
     public MatchResult execute(Order order) {
         MatchResult result = match(order);
 
