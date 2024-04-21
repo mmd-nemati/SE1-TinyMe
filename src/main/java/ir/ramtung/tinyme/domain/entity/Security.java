@@ -23,8 +23,8 @@ public class Security {
     private int lotSize = 1;
     @Builder.Default
     private OrderBook orderBook = new OrderBook();
-    private final boolean ASCENDING = true;
-    private final boolean DESENDING = false;
+    private final static boolean ASCENDING = true;
+    private final static boolean DESENDING = false;
 
     @Builder.Default
     EnterOrderRqRepo buyDisabledRqs = new EnterOrderRqRepo(ASCENDING);
@@ -120,14 +120,17 @@ public class Security {
         return matchResult;
     }
    public void handleDisabledOrders(){
-        if(buyDisabledRqs == null && sellDisabledRqs == null)
-            return;
-        for(EnterOrderRq disabled : disabledOrderRqs.allOrderRqs()){
-            if((disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice) ||
-                    (disabled.getSide() == Side.SELL && disabled.getStopPrice() >= lastTradePrice)){
-                disabledOrderRqs.removeById(disabled.getOrderId());
-                if(!enabledOrderRqs.exist(disabled.getOrderId()))
-                    enabledOrderRqs.addOrderRq(disabled);
+       handleDisabledBuys();
+       handleDisabledSells();
+    }
+    private void handleDisabledBuys(){
+        if(buyDisabledRqs != null) {
+            for (EnterOrderRq buyDisabled : buyDisabledRqs.allOrderRqs()) {
+                if (buyDisabled.getStopPrice() <= lastTradePrice) {
+                    buyDisabledRqs.removeById(buyDisabled.getOrderId());
+                    if (!buyEnabledRqs.exist(buyDisabled.getOrderId()))
+                        buyEnabledRqs.addOrderRq(buyDisabled);
+                }
             }
         }
     }
@@ -135,7 +138,21 @@ public class Security {
         this.lastTradePrice = lastTradePrice;
     }
 
-    public void removeEnabledOrder(long orderId){
-        enabledOrderRqs.removeById(orderId);
+    public void removeEnabledOrder(long orderId, Side side){
+        if(side == Side.BUY)
+            buyEnabledRqs.removeById(orderId);
+        else
+            sellEnabledRqs.removeById(orderId);
+    }
+    private void handleDisabledSells() {
+        if(sellDisabledRqs != null) {
+            for (EnterOrderRq sellDisabled : sellDisabledRqs.allOrderRqs()) {
+                if (sellDisabled.getStopPrice() >= lastTradePrice) {
+                    sellDisabledRqs.removeById(sellDisabled.getOrderId());
+                    if (!sellEnabledRqs.exist(sellDisabled.getOrderId()))
+                        sellEnabledRqs.addOrderRq(sellDisabled);
+                }
+            }
+        }
     }
 }

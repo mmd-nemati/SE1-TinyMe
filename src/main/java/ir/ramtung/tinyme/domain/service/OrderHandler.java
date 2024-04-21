@@ -10,6 +10,7 @@ import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.messaging.request.OrderEntryType;
 import ir.ramtung.tinyme.repository.BrokerRepository;
+import ir.ramtung.tinyme.repository.EnterOrderRqRepo;
 import ir.ramtung.tinyme.repository.SecurityRepository;
 import ir.ramtung.tinyme.repository.ShareholderRepository;
 import org.springframework.stereotype.Service;
@@ -141,15 +142,25 @@ public class OrderHandler {
             throw new InvalidRequestException(errors);
     }
     private void executeEnabledOrders(Security security, Broker broker, Shareholder shareholder){
-        if(security.getEnabledOrderRqs() == null)
-            return;
-        for(EnterOrderRq rq : security.getEnabledOrderRqs().allOrderRqs()){
-            security.removeEnabledOrder(rq.getOrderId());
-            eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
-            rq.setStopPriceZero();
-            MatchResult matchResult = security.newOrder(rq, broker, shareholder, matcher);
-            if (!matchResult.trades().isEmpty()) {
-                applyExecuteEffects(rq, security, matchResult);
+        execBuyAndSell(security, broker, shareholder, Side.BUY);
+        execBuyAndSell(security, broker, shareholder, Side.SELL);
+    }
+    private void execBuyAndSell(Security security, Broker broker, Shareholder shareholder, Side side){
+        EnterOrderRqRepo reqs;
+        if(side == Side.BUY)
+            reqs = security.getBuyEnabledRqs();
+        else
+            reqs = security.getSellEnabledRqs();
+
+        if(reqs != null) {
+            for (EnterOrderRq rq : reqs.allOrderRqs()) {
+                security.removeEnabledOrder(rq.getOrderId(), side);
+                eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
+                rq.setStopPriceZero();
+                MatchResult matchResult = security.newOrder(rq, broker, shareholder, matcher);
+                if (!matchResult.trades().isEmpty()) {
+                    applyExecuteEffects(rq, security, matchResult);
+                }
             }
         }
     }
