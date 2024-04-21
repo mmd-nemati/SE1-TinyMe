@@ -25,6 +25,8 @@ public class Security {
 
     @Builder.Default
     OrderRepository disabledOrders;
+    @Builder.Default
+    OrderRepository enabledOrders;
 
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) {
         if (enterOrderRq.getSide() == Side.SELL &&
