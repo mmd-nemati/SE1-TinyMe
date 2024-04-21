@@ -110,4 +110,6 @@ public class EnterOrderRq {
                 peakSize, minimumExecutionQuantity, stopPrice);
     }
 
+    public void setStopPriceZero(){ stopPrice = 0; }
+
 }
