@@ -9,6 +9,7 @@ import ir.ramtung.tinyme.repository.EnterOrderRqRepo;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Iterator;
 
@@ -23,10 +24,10 @@ public class Security {
     @Builder.Default
     private OrderBook orderBook = new OrderBook();
 
-
-    EnterOrderRqRepo disabledOrderRqs;
-
-    EnterOrderRqRepo enabledOrderRqs;
+    @Builder.Default
+    EnterOrderRqRepo disabledOrderRqs = new HashMap<>();
+    @Builder.Default
+    EnterOrderRqRepo enabledOrderRqs = new HashMap<>();
 
     @Builder.Default
     int lastTradePrice = 0;
