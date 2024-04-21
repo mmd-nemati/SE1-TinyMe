@@ -28,6 +28,9 @@ public class Security {
     @Builder.Default
     OrderRepository enabledOrders;
 
+    @Builder.Default
+    int lastTradePrice = 0;
+
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) {
         if (enterOrderRq.getSide() == Side.SELL &&
                 !shareholder.hasEnoughPositionsOn(this,
@@ -107,5 +110,14 @@ public class Security {
             }
         }
         return matchResult;
+    }
+    public void handledisabledOrders(){
+        for(Order disabled : disabledOrders){
+            if(disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice){
+                disabledOrders.removeById(disabled.getOrderId());
+                if(!enabledOrders.exist(disabled.getOrderId()))
+                    enabledOrders.addOrder(disabled);
+            }
+        }
     }
 }

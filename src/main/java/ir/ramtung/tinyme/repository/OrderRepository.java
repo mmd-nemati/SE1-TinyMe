@@ -19,5 +19,5 @@ public class OrderRepository {
     }
     public void removeById(String id) { orderById.remove(id); }
     public boolean exist(String id) { return(orderById.containsKey(id)); }
-    Iterable<? extends Order> allSecurities() { return orderById.values(); }
+    Iterable<? extends Order> allOrders() { return orderById.values(); }
 }

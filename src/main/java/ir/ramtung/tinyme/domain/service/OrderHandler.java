@@ -70,6 +70,7 @@ public class OrderHandler {
                 if(enterOrderRq.getStopPrice() != 0)
                     eventPublisher.publish(new OrderActivatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
                 eventPublisher.publish(new OrderExecutedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
+                security.handledisabledOrders();
             }
         } catch (InvalidRequestException ex) {
             eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), ex.getReasons()));
