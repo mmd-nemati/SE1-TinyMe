@@ -109,7 +109,7 @@ public class Matcher {
                 trade.getSell().getShareholder().decPosition(trade.getSecurity(), trade.getQuantity());
             }
         }
-        if(order.getStopPrice() != 0 && result.trades().isEmpty())
+        if(result.trades().isEmpty())
             return MatchResult.activated();
         return result;
     }

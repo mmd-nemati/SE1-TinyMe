@@ -124,7 +124,7 @@ public class StopOrderTest {
 
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
-                shareholder.getShareholderId(), 0, 0, 1000000));
+                shareholder.getShareholderId(), 0, 0, 100));
 
         verify(eventPublisher).publish(any(OrderActivatedEvent.class));
     }
