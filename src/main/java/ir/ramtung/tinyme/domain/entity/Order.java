@@ -185,18 +185,14 @@ public class Order {
 
     public void setStopPriceZero() { stopPrice = 0; }
 
-    public boolean isAllowedToUpdateStopLimitOrder(Order O) {
-        return O.orderId == this.orderId &&
-                Objects.equals(O.security.getIsin(), this.security.getIsin()) &&
-                O.side == this.side &&
-                O.quantity == this.quantity &&
-                O.price == this.price &&
-                O.shareholder.getShareholderId() == this.shareholder.getShareholderId() &&
-                O.entryTime == this.entryTime &&
-                O.status == this.status &&
-                O.minimumExecutionQuantity == this.minimumExecutionQuantity &&
-                O.stopPrice == this.stopPrice &&
-                O.isFirstEntry == this.isFirstEntry;
+    public boolean isAllowedToUpdateStopLimitOrder(int orderId, String Isin, long brokerId, Side side,
+                                                   long shareholderId, LocalDateTime entryTime) {
+        return  orderId == this.orderId &&
+                Objects.equals(Isin, this.security.getIsin()) &&
+                side == this.side &&
+                shareholderId == this.shareholder.getShareholderId() &&
+                entryTime == this.entryTime &&
+                brokerId == this.broker.getBrokerId();
     }
 }
 
