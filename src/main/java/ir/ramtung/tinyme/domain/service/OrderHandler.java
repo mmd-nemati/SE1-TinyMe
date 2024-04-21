@@ -14,6 +14,7 @@ import ir.ramtung.tinyme.repository.SecurityRepository;
 import ir.ramtung.tinyme.repository.ShareholderRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -68,9 +69,8 @@ public class OrderHandler {
             if (!matchResult.trades().isEmpty()) {
                 if(enterOrderRq.getStopPrice() != 0)
                     eventPublisher.publish(new OrderActivatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
-                eventPublisher.publish(new OrderExecutedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
-                security.updateLastTradePrice(matchResult.trades().getLast().getPrice());
-               // security.handleDisabledOrders();
+                applyExecuteEffects(enterOrderRq, security, matchResult);
+                executeEnabledOrders(security, broker, shareholder);
             }
         } catch (InvalidRequestException ex) {
             eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), ex.getReasons()));
@@ -136,6 +136,30 @@ public class OrderHandler {
             errors.add(Message.UNKNOWN_SECURITY_ISIN);
         if (!errors.isEmpty())
             throw new InvalidRequestException(errors);
+    }
+    private void executeEnabledOrders(Security security, Broker broker, Shareholder shareholder){
+        if(security.getEnabledOrderRqs() == null)
+            return;
+        for(EnterOrderRq rq : security.getEnabledOrderRqs().allOrderRqs()){
+            security.removeEnabledOrder(rq.getOrderId());
+            eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
+
+            EnterOrderRq newEnterOrderRq = EnterOrderRq.createNewOrderRq(rq.getRequestId(),
+                    security.getIsin(), rq.getOrderId(), LocalDateTime.now(), rq.getSide(),
+                    rq.getQuantity(), rq.getPrice(), broker.getBrokerId(),
+                    shareholder.getShareholderId(), rq.getPeakSize());
+            MatchResult matchResult = security.newOrder(newEnterOrderRq, broker, shareholder, matcher);
+            if (!matchResult.trades().isEmpty()) {
+                applyExecuteEffects(rq, security, matchResult);
+            }
+        }
+    }
+
+    private void applyExecuteEffects(EnterOrderRq rq, Security security, MatchResult matchResult){
+        eventPublisher.publish(new OrderExecutedEvent(rq.getRequestId(), rq.getOrderId(),
+                matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
+        security.updateLastTradePrice(matchResult.trades().getLast().getPrice());
+        security.handleDisabledOrders();
     }
 
 }

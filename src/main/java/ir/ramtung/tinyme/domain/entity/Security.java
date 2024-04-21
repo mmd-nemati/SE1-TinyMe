@@ -107,6 +107,8 @@ public class Security {
         return matchResult;
     }
    public void handleDisabledOrders(){
+        if(disabledOrderRqs == null)
+            return;
         for(EnterOrderRq disabled : disabledOrderRqs.allOrderRqs()){
             if(disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice){
                 disabledOrderRqs.removeById(disabled.getOrderId());
@@ -117,5 +119,9 @@ public class Security {
     }
     public void updateLastTradePrice(int lastTradePrice){
         this.lastTradePrice = lastTradePrice;
+    }
+
+    public void removeEnabledOrder(long orderId){
+        enabledOrderRqs.removeById(orderId);
     }
 }
