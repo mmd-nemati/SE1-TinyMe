@@ -6,8 +6,10 @@ import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.domain.service.OrderHandler;
 import ir.ramtung.tinyme.messaging.EventPublisher;
 import ir.ramtung.tinyme.messaging.Message;
+import ir.ramtung.tinyme.messaging.TradeDTO;
 import ir.ramtung.tinyme.messaging.event.OrderAcceptedEvent;
 import ir.ramtung.tinyme.messaging.event.OrderActivatedEvent;
+import ir.ramtung.tinyme.messaging.event.OrderExecutedEvent;
 import ir.ramtung.tinyme.messaging.event.OrderRejectedEvent;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.repository.BrokerRepository;
@@ -108,12 +110,8 @@ public class StopOrderTest {
     }
 
     @Test
-    void accept_activate_stop_order() {
+    void activate_stop_orders_enter_after_trade() {
         buyBroker.increaseCreditBy(100_000);
-//        Order sellOrder = new Order(11, security, Side.SELL, 50, 545, sellBroker, shareholder);
-//        Order buyOrder = new Order(3, security, Side.BUY, 50, 550, buyBroker, shareholder);
-//        security.getOrderBook().enqueue(sellOrder);
-//        MatchResult result = matcher.match(buyOrder);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
                 LocalDateTime.now(), Side.SELL, 50, 545, sellBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 0));
@@ -126,7 +124,57 @@ public class StopOrderTest {
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
 
-        verify(eventPublisher).publish(any(OrderActivatedEvent.class));
+        verify(eventPublisher).publish(new OrderActivatedEvent(3, 10));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(4, "ABC", 11,
+                LocalDateTime.now(), Side.SELL, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 1000));
+
+        verify(eventPublisher).publish(new OrderActivatedEvent(4, 11));
     }
 
+    @Test
+    void activate_stop_order_enter_before_trade() {
+        buyBroker.increaseCreditBy(100_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
+                LocalDateTime.now(), Side.SELL, 50, 545, sellBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(2, "ABC", 3,
+                LocalDateTime.now(), Side.BUY, 50, 550, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+
+        verify(eventPublisher).publish(new OrderActivatedEvent(3, 10));
+    }
+
+    @Test
+    void activated_stop_order_makes_trade() {
+        buyBroker.increaseCreditBy(100_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
+                LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(2, "ABC", 3,
+                LocalDateTime.now(), Side.BUY, 50, 550, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+
+
+        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
+//        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+//        verify(eventPublisher).publish(any(OrderActivatedEvent.class));
+        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
+//        verify(orderHandler).applyExecuteEffects(any(OrderExecutedEvent.class));
+    }
+
+//    @Test
+//    void
 }
