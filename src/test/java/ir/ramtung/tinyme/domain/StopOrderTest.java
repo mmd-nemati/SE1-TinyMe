@@ -274,6 +274,34 @@ public class StopOrderTest {
         verify(eventPublisher).publish(new OrderRejectedEvent(2, 12, List.of(Message.ORDER_ID_NOT_FOUND)));
     }
 
+    @Test
+    void activate_multiple_stop_order_enter_before_trade() {
+        buyBroker.increaseCreditBy(100_000_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+//
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(4, "ABC", 11,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 120));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(5, "ABC", 12,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 110));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
+                LocalDateTime.now(), Side.SELL, 50, 545, sellBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(2, "ABC", 3,
+                LocalDateTime.now(), Side.BUY, 50, 550, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+
+        verify(eventPublisher).publish(new OrderActivatedEvent(3, 10));
+        verify(eventPublisher).publish(new OrderActivatedEvent(5, 12));
+        verify(eventPublisher).publish(new OrderActivatedEvent(4, 11));
+    }
+
 
 //    @Test
 //    void delete_stop_order_before_activation() {

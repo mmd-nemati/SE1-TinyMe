@@ -39,5 +39,6 @@ public class EnterOrderRqRepo {
     }
     public void removeById(Long id) { orderById.remove(id); }
     public boolean exist(Long id) { return(orderById.containsKey(id)); }
+    public int theSize(){ return( orderById.size()); };
     public Iterable<? extends EnterOrderRq> allOrderRqs() { return orderById.values(); }
 }
