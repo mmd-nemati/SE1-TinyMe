@@ -4,14 +4,21 @@ import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 
 @Component
 public class EnterOrderRqRepo {
-    private final HashMap<Long, EnterOrderRq> orderById = new HashMap<>();
+    private final HashMap<Long, EnterOrderRq> orderById;
+    boolean ascendingStore;
+    public EnterOrderRqRepo(boolean ascendingStore) {
+        orderById = new HashMap<>();
+        this.ascendingStore = ascendingStore;
+    }
+
     public EnterOrderRq findOrderRqById(Long id) {
         return orderById.get(id);
     }
-    public void addOrderRq(EnterOrderRq orderRq) {orderById.put(orderRq.getOrderId(), orderRq);}
+    public void addOrderRq(EnterOrderRq orderRq) { orderById.put(orderRq.getOrderId(), orderRq); }
     public void clear() {
         orderById.clear();
     }
