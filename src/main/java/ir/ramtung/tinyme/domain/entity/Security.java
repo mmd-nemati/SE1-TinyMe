@@ -23,11 +23,18 @@ public class Security {
     private int lotSize = 1;
     @Builder.Default
     private OrderBook orderBook = new OrderBook();
+    private final boolean ASCENDING = true;
+    private final boolean DESENDING = false;
 
     @Builder.Default
-    EnterOrderRqRepo disabledOrderRqs = new EnterOrderRqRepo();
+    EnterOrderRqRepo buyDisabledRqs = new EnterOrderRqRepo(ASCENDING);
     @Builder.Default
-    EnterOrderRqRepo enabledOrderRqs = new EnterOrderRqRepo();;
+    EnterOrderRqRepo buyEnabledRqs = new EnterOrderRqRepo(ASCENDING);
+
+    @Builder.Default
+    EnterOrderRqRepo sellDisabledRqs = new EnterOrderRqRepo(DESENDING);
+    @Builder.Default
+    EnterOrderRqRepo sellEnabledRqs = new EnterOrderRqRepo(DESENDING);
 
     @Builder.Default
     int lastTradePrice = 0;
@@ -49,8 +56,13 @@ public class Security {
                     enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW, enterOrderRq.getMinimumExecutionQuantity());
 
         MatchResult result = matcher.execute(order, lastTradePrice);
-        if(result.outcome() == MatchingOutcome.ACCEPTED)
-                disabledOrderRqs.addOrderRq(enterOrderRq);
+        if(result.outcome() == MatchingOutcome.ACCEPTED){
+            if(enterOrderRq.getSide() == Side.BUY)
+                buyDisabledRqs.addOrderRq(enterOrderRq);
+            else
+                sellDisabledRqs.addOrderRq(enterOrderRq);
+        }
+
         return result;
     }
 
@@ -108,7 +120,7 @@ public class Security {
         return matchResult;
     }
    public void handleDisabledOrders(){
-        if(disabledOrderRqs == null)
+        if(buyDisabledRqs == null && sellDisabledRqs == null)
             return;
         for(EnterOrderRq disabled : disabledOrderRqs.allOrderRqs()){
             if((disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice) ||
