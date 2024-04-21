@@ -1,7 +1,5 @@
 package ir.ramtung.tinyme.repository;
 
-import ir.ramtung.tinyme.domain.entity.Order;
-import ir.ramtung.tinyme.domain.entity.Security;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import org.springframework.stereotype.Component;
 
@@ -19,5 +17,5 @@ public class EnterOrderRqRepo {
     }
     public void removeById(Long id) { orderById.remove(id); }
     public boolean exist(Long id) { return(orderById.containsKey(id)); }
-    Iterable<? extends EnterOrderRq> allOrders() { return orderById.values(); }
+    public Iterable<? extends EnterOrderRq> allOrderRqs() { return orderById.values(); }
 }

@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.List;
+import java.util.Iterator;
 
 @Getter
 @Builder
@@ -105,15 +106,15 @@ public class Security {
         }
         return matchResult;
     }
-   /*public void handleDisabledOrders(){
-        for(EnterOrderRq disabled : disabledOrderRqs){
+   public void handleDisabledOrders(){
+        for(EnterOrderRq disabled : disabledOrderRqs.allOrderRqs()){
             if(disabled.getSide() == Side.BUY && disabled.getStopPrice() <= lastTradePrice){
                 disabledOrderRqs.removeById(disabled.getOrderId());
                 if(!enabledOrderRqs.exist(disabled.getOrderId()))
-                    enabledOrderRqs.addOrder(disabled);
+                    enabledOrderRqs.addOrderRq(disabled);
             }
         }
-    }*/
+    }
     public void updateLastTradePrice(int lastTradePrice){
         this.lastTradePrice = lastTradePrice;
     }
