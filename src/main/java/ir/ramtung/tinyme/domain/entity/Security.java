@@ -79,8 +79,15 @@ public class Security {
 
     public void deleteOrder(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
         Order order = orderBook.findByOrderId(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
-        if (order == null)
-            throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
+        if (order == null) {
+            if (buyDisabledRqs.exist(deleteOrderRq.getOrderId()))
+                order = buyDisabledOrders.findOrderById(deleteOrderRq.getOrderId());
+            else if (sellDisabledOrders.exist(deleteOrderRq.getOrderId()))
+                order = sellDisabledOrders.findOrderById(deleteOrderRq.getOrderId());
+            else
+            if (!buyDisabledRqs.exist(deleteOrderRq.getOrderId()) && !sellDisabledRqs.exist(deleteOrderRq.getOrderId()))
+                throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
+        }
         if (order.getSide() == Side.BUY)
             order.getBroker().increaseCreditBy(order.getValue());
         orderBook.removeByOrderId(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
@@ -94,12 +101,9 @@ public class Security {
             else if (sellDisabledOrders.exist(updateOrderRq.getOrderId()))
                 order = sellDisabledOrders.findOrderById(updateOrderRq.getOrderId());
             else
-////            order = buyDisabledRqs.findOrderRqById(updateOrderRq.getOrderId());
-//            if (buyDisabledRqs.ge)
             if (!buyDisabledRqs.exist(updateOrderRq.getOrderId()) && !sellDisabledRqs.exist(updateOrderRq.getOrderId()))
                 throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
         }
-//            throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
 
         if ((order instanceof IcebergOrder) && updateOrderRq.getPeakSize() == 0)
             throw new InvalidRequestException(Message.INVALID_PEAK_SIZE);

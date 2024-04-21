@@ -8,6 +8,7 @@ import ir.ramtung.tinyme.messaging.EventPublisher;
 import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.messaging.TradeDTO;
 import ir.ramtung.tinyme.messaging.event.*;
+import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.repository.BrokerRepository;
 import ir.ramtung.tinyme.repository.SecurityRepository;
@@ -148,29 +149,28 @@ public class StopOrderTest {
         verify(eventPublisher).publish(new OrderActivatedEvent(3, 10));
     }
 
-//    @Test
-//    void activated_stop_order_makes_trade() {
-//        buyBroker.increaseCreditBy(100_000);
-//        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
-//                LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
-//                shareholder.getShareholderId(), 0, 0, 0));
-//
-//        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(2, "ABC", 3,
-//                LocalDateTime.now(), Side.BUY, 50, 550, buyBroker.getBrokerId(),
-//                shareholder.getShareholderId(), 0, 0, 0));
-//
-//
-//        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
-////        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
-//
-//        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
-//                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
-//                shareholder.getShareholderId(), 0, 0, 100));
-//
-////        verify(eventPublisher).publish(any(OrderActivatedEvent.class));
-//        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
-////        verify(orderHandler).applyExecuteEffects(any(OrderExecutedEvent.class));
-//    }
+    @Test
+    void activated_stop_order_has_correct_credit_after_trade() {
+        buyBroker.increaseCreditBy(100_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
+                LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(2, "ABC", 3,
+                LocalDateTime.now(), Side.BUY, 50, 550, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+
+
+        verify(eventPublisher).publish(any(OrderExecutedEvent.class));
+
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+        assertThat(buyBroker.getCredit()).isEqualTo(100_000 - 50 * 545 - 25 * 545);
+
+    }
 
     @Test
     void reject_update_stop_price_after_activation() {
@@ -195,8 +195,6 @@ public class StopOrderTest {
         verify(eventPublisher).publish(new OrderRejectedEvent(4, 10, List.of(Message.CANNOT_CHANGE_STOP_PRICE_FOR_ACTIVATED)));
     }
 
-//    @Test
-//    void reject_
     @Test
     void accept_update_before_activation() {
         buyBroker.increaseCreditBy(100_000_000);
@@ -211,7 +209,6 @@ public class StopOrderTest {
         verify(eventPublisher).publish(any(OrderUpdatedEvent.class));
     }
 
-
     @Test
     void reject_update_not_allowed_fields_before_activation() {
         buyBroker.increaseCreditBy(100_000_000);
@@ -222,9 +219,10 @@ public class StopOrderTest {
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10,
                 LocalDateTime.now(), Side.SELL, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 80));
-        // TODO -> Message?
+
         verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION)));
     }
+
     @Test
     void reject_update_not_allowed_to_change_min_Execution_Quantity() {
         buyBroker.increaseCreditBy(100_000_000);
@@ -235,9 +233,48 @@ public class StopOrderTest {
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 10, 80));
-        // TODO -> Message?
+
         verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY)));
     }
+
+    @Test
+    void reject_update_not_allowed_to_convert_to_icebergOrder() {
+        buyBroker.increaseCreditBy(100_000_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, "ABC", 10,
+                LocalDateTime.now(), Side.SELL, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 10, 0, 80));
+
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.STOP_ORDER_IS_ICEBERG_TOO)));
+    }
+    @Test
+    void delete_stop_order_before_activation() {
+        buyBroker.increaseCreditBy(100_000_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+        orderHandler.handleDeleteOrder(new DeleteOrderRq(2, security.getIsin(), Side.BUY, 10));
+        // TODO -> Message?
+        verify(eventPublisher).publish(new OrderDeletedEvent(2, 10));
+    }
+
+    @Test
+    void delete_stop_order_before_activation_not_found() {
+        buyBroker.increaseCreditBy(100_000_000);
+        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 100));
+
+        orderHandler.handleDeleteOrder(new DeleteOrderRq(2, security.getIsin(), Side.BUY, 12));
+
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 12, List.of(Message.ORDER_ID_NOT_FOUND)));
+    }
+
+
 //    @Test
 //    void delete_stop_order_before_activation() {
 //
