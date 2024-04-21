@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-@Component
 public class EnterOrderRqRepo {
     private final HashMap<Long, EnterOrderRq> orderById;
     boolean ascendingStore;
