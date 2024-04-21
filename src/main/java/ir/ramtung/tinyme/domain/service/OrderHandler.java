@@ -67,6 +67,8 @@ public class OrderHandler {
             if(matchResult.outcome() == MatchingOutcome.ACTIVATED)
                 eventPublisher.publish(new OrderActivatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
             if (!matchResult.trades().isEmpty()) {
+                if(enterOrderRq.getStopPrice() != 0)
+                    eventPublisher.publish(new OrderActivatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
                 eventPublisher.publish(new OrderExecutedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
             }
         } catch (InvalidRequestException ex) {
