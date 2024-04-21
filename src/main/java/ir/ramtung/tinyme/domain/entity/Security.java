@@ -6,6 +6,7 @@ import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.repository.EnterOrderRepository;
+import ir.ramtung.tinyme.repository.OrderRepository;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -23,7 +24,7 @@ public class Security {
     private OrderBook orderBook = new OrderBook();
 
     @Builder.Default
-    EnterOrderRepository disabledOrders;
+    OrderRepository disabledOrders;
 
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) {
         if (enterOrderRq.getSide() == Side.SELL &&
@@ -42,7 +43,9 @@ public class Security {
                     enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW, enterOrderRq.getMinimumExecutionQuantity());
 
         MatchResult result = matcher.execute(order);
-
+        if(result.outcome() == MatchingOutcome.ACCEPTED){
+                disabledOrders.addOrder(order);
+        }
         return result;
     }
 
