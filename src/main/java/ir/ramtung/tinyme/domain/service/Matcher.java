@@ -72,7 +72,7 @@ public class Matcher {
         }
     }
 
-    private MatchResult canExecute(Order order, int lastTradePrice){
+    private MatchResult recognizeOutcome(Order order, int lastTradePrice){
         if (order.getSide() == Side.BUY) {
             if (!order.getBroker().hasEnoughCredit(order.getValue()))
                 return MatchResult.notEnoughCredit();
@@ -115,7 +115,7 @@ public class Matcher {
     public MatchResult execute(Order order, int lastTradePrice){
         MatchResult result;
         if(order.getStopPrice() != 0) {
-            result = canExecute(order, lastTradePrice);
+            result = recognizeOutcome(order, lastTradePrice);
             if(result.outcome() != MatchingOutcome.ACTIVATED)
                 return(result);
             order.setStopPriceZero();
