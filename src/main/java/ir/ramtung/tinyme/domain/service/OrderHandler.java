@@ -158,22 +158,11 @@ public class OrderHandler {
         execBuyAndSell(security, broker, shareholder, Side.SELL);
     }
     private void execBuyAndSell(Security security, Broker broker, Shareholder shareholder, Side side){
-        EnterOrderRqRepo preReqs;
         EnterOrderRqRepo reqs;
-        if(side == Side.BUY) {
-            preReqs = security.getBuyEnabledRqs();
-            reqs = new EnterOrderRqRepo(true);
-        }
-        else {
-            preReqs = security.getSellEnabledRqs();
-            reqs = new EnterOrderRqRepo(false);
-        }
-
-
-        if(preReqs != null) {
-            for (EnterOrderRq current : preReqs.allOrderRqs())
-                reqs.addOrderRq(current);
-        }
+        if(side == Side.BUY)
+            reqs = security.getBuyEnabledRqs().makeCopy();
+        else
+            reqs = security.getBuyEnabledRqs().makeCopy();
 
         if(reqs != null) {
             for (EnterOrderRq rq : reqs.allOrderRqs()) {
@@ -189,7 +178,7 @@ public class OrderHandler {
         if(side == Side.BUY && (security.getBuyEnabledRqs().theSize() == 0))
             return;
         if(side == Side.SELL && (security.getSellEnabledRqs().theSize() == 0))
-            return;;
+            return;
         execBuyAndSell(security, broker, shareholder, side);
     }
 

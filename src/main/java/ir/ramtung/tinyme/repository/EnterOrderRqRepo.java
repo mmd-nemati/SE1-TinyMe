@@ -40,5 +40,13 @@ public class EnterOrderRqRepo {
     public void removeById(Long id) { if(exist(id)) orderById.remove(id); }
     public boolean exist(Long id) { return(orderById.containsKey(id)); }
     public int theSize(){ return( orderById.size()); };
+
+    public EnterOrderRqRepo makeCopy(){
+        EnterOrderRqRepo cloned = new EnterOrderRqRepo(ascendingStore);
+        for(EnterOrderRq currentRq : orderById.values())
+            cloned.addOrderRq(currentRq);
+
+        return(cloned);
+    }
     public Iterable<? extends EnterOrderRq> allOrderRqs() { return orderById.values(); }
 }
