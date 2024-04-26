@@ -54,15 +54,21 @@ public class Security {
         Order order;
         if (enterOrderRq.getPeakSize() == 0)
             order = new Order(enterOrderRq.getOrderId(), this, enterOrderRq.getSide(),
-                    enterOrderRq.getQuantity(), enterOrderRq.getPrice(), broker, shareholder,
-                    enterOrderRq.getEntryTime(), OrderStatus.NEW,
+                    enterOrderRq.getQuantity(), enterOrderRq.getPrice(), broker,
+                    shareholder, enterOrderRq.getEntryTime(), OrderStatus.NEW,
                     enterOrderRq.getMinimumExecutionQuantity(), enterOrderRq.getStopPrice());
         else
             order = new IcebergOrder(enterOrderRq.getOrderId(), this, enterOrderRq.getSide(),
                     enterOrderRq.getQuantity(), enterOrderRq.getPrice(), broker, shareholder,
-                    enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW, enterOrderRq.getMinimumExecutionQuantity());
+                    enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW,
+                    enterOrderRq.getMinimumExecutionQuantity());
 
         MatchResult result = matcher.execute(order, lastTradePrice);
+        handleAcceptingState(result);
+        return result;
+    }
+
+    private void handleAcceptingState(MatchResult result){
         if(result.outcome() == MatchingOutcome.ACCEPTED){
             if(enterOrderRq.getSide() == Side.BUY) {
                 buyDisabledRqs.addOrderRq(enterOrderRq);
@@ -73,8 +79,6 @@ public class Security {
                 sellDisabledOrders.addOrder(order);
             }
         }
-
-        return result;
     }
 
     public void deleteOrder(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
