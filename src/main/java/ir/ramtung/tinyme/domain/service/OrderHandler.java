@@ -82,13 +82,9 @@ public class OrderHandler {
     }
 
     private void applyExecutionEffects(EnterOrderRq rq, MatchResult matchResult){
-        Security security = securityRepository.findSecurityByIsin(rq.getSecurityIsin());
-        Broker broker = brokerRepository.findBrokerById(rq.getBrokerId());
-        Shareholder shareholder = shareholderRepository.findShareholderById(rq.getShareholderId());
-
         rq.setStopPriceZero();
-        applyExecuteEffects(rq, security, matchResult);
-        executeEnabledOrders(security, broker, shareholder);
+        applyExecuteEffects(rq, matchResult);
+        executeEnabledOrders(rq);
     }
 
     public void handleDeleteOrder(DeleteOrderRq deleteOrderRq) {
@@ -153,11 +149,36 @@ public class OrderHandler {
         if (!errors.isEmpty())
             throw new InvalidRequestException(errors);
     }
-    private void executeEnabledOrders(Security security, Broker broker, Shareholder shareholder){
-        execBuyAndSell(security, broker, shareholder, Side.BUY);
-        execBuyAndSell(security, broker, shareholder, Side.SELL);
+    
+    private void executeEnabledOrders(EnterOrderRq rq){
+        execBuyAndSell(rq, Side.BUY);
+        execBuyAndSell(rq, Side.SELL);
     }
-    private void execBuyAndSell(Security security, Broker broker, Shareholder shareholder, Side side){
+
+    private boolean isEnabledOver(Side side, Security security){
+        return(
+                (side == Side.BUY && (security.getBuyEnabledRqs().theSize() == 0))
+                ||
+                (side == Side.SELL && (security.getSellEnabledRqs().theSize() == 0))
+                );
+    }
+
+    private void executeTheEnabled(EnterOrderRq rq, Side side){
+        Security security = securityRepository.findSecurityByIsin(rq.getSecurityIsin());
+        Broker broker = brokerRepository.findBrokerById(rq.getBrokerId());
+        Shareholder shareholder = shareholderRepository.findShareholderById(rq.getShareholderId());
+
+        security.removeEnabledOrder(rq.getOrderId(), side);
+        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
+        rq.setStopPriceZero();
+
+        MatchResult matchResult = security.newOrder(rq, broker, shareholder, matcher);
+        if (!matchResult.trades().isEmpty())
+            applyExecuteEffects(rq, matchResult);
+    }
+
+    private void execBuyAndSell(EnterOrderRq enterRq, Side side){
+        Security security = securityRepository.findSecurityByIsin(enterRq.getSecurityIsin());
         EnterOrderRqRepo reqs;
         if(side == Side.BUY)
             reqs = security.getBuyEnabledRqs().makeCopy();
@@ -165,24 +186,18 @@ public class OrderHandler {
             reqs = security.getBuyEnabledRqs().makeCopy();
 
         if(reqs != null) {
-            for (EnterOrderRq rq : reqs.allOrderRqs()) {
-                security.removeEnabledOrder(rq.getOrderId(), side);
-                eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
-                rq.setStopPriceZero();
-                MatchResult matchResult = security.newOrder(rq, broker, shareholder, matcher);
-                if (!matchResult.trades().isEmpty()) {
-                    applyExecuteEffects(rq, security, matchResult);
-                }
-            }
+            for (EnterOrderRq rq : reqs.allOrderRqs())
+                executeTheEnabled(rq, side);
         }
-        if(side == Side.BUY && (security.getBuyEnabledRqs().theSize() == 0))
-            return;
-        if(side == Side.SELL && (security.getSellEnabledRqs().theSize() == 0))
-            return;
-        execBuyAndSell(security, broker, shareholder, side);
+
+        if(isEnabledOver(side, security))
+                return;
+
+        execBuyAndSell(enterRq, side);
     }
 
-    private void applyExecuteEffects(EnterOrderRq rq, Security security, MatchResult matchResult){
+    private void applyExecuteEffects(EnterOrderRq rq, MatchResult matchResult){
+        Security security = securityRepository.findSecurityByIsin(rq.getSecurityIsin());
         eventPublisher.publish(new OrderExecutedEvent(rq.getRequestId(), rq.getOrderId(),
                 matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
         security.updateLastTradePrice(matchResult.trades().getLast().getPrice());
