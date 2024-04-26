@@ -1,5 +1,6 @@
 package ir.ramtung.tinyme.repository;
 
+import ir.ramtung.tinyme.domain.entity.Order;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import org.springframework.stereotype.Component;
 
@@ -17,22 +18,25 @@ public class EnterOrderRqRepo {
     public EnterOrderRq findOrderRqById(Long id) {
         return orderById.get(id);
     }
-    public void addOrderRq(EnterOrderRq orderRq) {
+    private boolean isRightPlace(EnterOrderRq inHashRq, EnterOrderRq newRq){
+        return(
+                (ascendingStore && (inHashRq.getStopPrice()
+                        > newRq.getStopPrice()))
+                        ||
+                        (!ascendingStore && (inHashRq.getStopPrice()
+                                < newRq.getStopPrice()))
+        );
+    }
+    public void addOrderRq(EnterOrderRq newRq) {
         if(orderById.isEmpty())
-            orderById.put(orderRq.getOrderId(), orderRq);
+            orderById.put(newRq.getOrderId(), newRq);
         else{
-            for(EnterOrderRq rq : orderById.values()){
-                if(ascendingStore && (rq.getStopPrice() > orderRq.getStopPrice())){
-                    orderById.put(orderRq.getOrderId(), orderRq);
-                    return;
-                }
-                if(!ascendingStore && (rq.getStopPrice() < orderRq.getStopPrice())){
-                    orderById.put(orderRq.getOrderId(), orderRq);
-                    return;
-                }
+            for(EnterOrderRq inHashOrder : orderById.values()){
+                if(isRightPlace(inHashOrder, newRq))
+                    break;
             }
         }
-        orderById.put(orderRq.getOrderId(), orderRq);
+        orderById.put(newRq.getOrderId(), newRq);
     }
     public void clear() {
         orderById.clear();

@@ -149,7 +149,7 @@ public class OrderHandler {
         if (!errors.isEmpty())
             throw new InvalidRequestException(errors);
     }
-    
+
     private void executeEnabledOrders(EnterOrderRq rq){
         execBuyAndSell(rq, Side.BUY);
         execBuyAndSell(rq, Side.SELL);
@@ -198,8 +198,10 @@ public class OrderHandler {
 
     private void applyExecuteEffects(EnterOrderRq rq, MatchResult matchResult){
         Security security = securityRepository.findSecurityByIsin(rq.getSecurityIsin());
+
         eventPublisher.publish(new OrderExecutedEvent(rq.getRequestId(), rq.getOrderId(),
                 matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
+        
         security.updateLastTradePrice(matchResult.trades().getLast().getPrice());
         security.handleDisabledOrders();
     }
