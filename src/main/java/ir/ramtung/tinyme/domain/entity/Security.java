@@ -159,25 +159,40 @@ public class Security {
         }
         return matchResult;
     }
-   public void handleDisabledOrders(){
-       handleDisabledBuys();
-       handleDisabledSells();
+    public void handleDisabledOrders(){
+       handleEachDisabled(buyDisabledRqs, buyEnabledRqs, true);
+       handleEachDisabled(sellDisabledRqs, sellEnabledRqs, false);
     }
-    private void handleDisabledBuys(){
-        if(buyDisabledRqs != null) {
-            EnterOrderRqRepo toRemove = new EnterOrderRqRepo(DESENDING);
-            for (EnterOrderRq buyDisabled : buyDisabledRqs.allOrderRqs()) {
-                if (buyDisabled.getStopPrice() <= lastTradePrice) {
-                    toRemove.addOrderRq(buyDisabled);
-                    buyDisabledOrders.removeById(buyDisabled.getOrderId());
-                    if (!buyEnabledRqs.exist(buyDisabled.getOrderId()))
-                        buyEnabledRqs.addOrderRq(buyDisabled);
+
+    private boolean isActivationReady(boolean isBuySide, EnterOrderRq disabled){
+        return (
+                (isBuySide &&
+                disabled.getStopPrice() <= lastTradePrice)
+                ||
+                (!isBuySide &&
+                disabled.getStopPrice() >= lastTradePrice)
+        );
+    }
+
+    private void enableTheRq(EnterOrderRq disabled, EnterOrderRqRepo toRemove, EnterOrderRqRepo enabledRqs){
+        toRemove.addOrderRq(disabled);
+        buyDisabledOrders.removeById(disabled.getOrderId());
+        if (!enabledRqs.exist(disabled.getOrderId()))
+            enabledRqs.addOrderRq(disabled);
+    }
+
+    private void handleEachDisabled(EnterOrderRqRepo disabledRqs,
+                                    EnterOrderRqRepo enabledRqs, boolean isBuySide){
+        if(disabledRqs != null) {
+            EnterOrderRqRepo toRemove = new EnterOrderRqRepo(ASCENDING);
+            for (EnterOrderRq disabled : disabledRqs.allOrderRqs()) {
+                if (isActivationReady(isBuySide, disabled)) {
+                    enableTheRq(disabled, toRemove, enabledRqs);
                 }
             }
             for(EnterOrderRq current : toRemove.allOrderRqs())
-                buyDisabledRqs.removeById(current.getOrderId());
+                disabledRqs.removeById(current.getOrderId());
         }
-
     }
     public void updateLastTradePrice(int lastTradePrice){
         this.lastTradePrice = lastTradePrice;
@@ -188,21 +203,5 @@ public class Security {
             buyEnabledRqs.removeById(orderId);
         else
             sellEnabledRqs.removeById(orderId);
-    }
-    private void handleDisabledSells() {
-        if(sellDisabledRqs != null) {
-            EnterOrderRqRepo toRemove = new EnterOrderRqRepo(ASCENDING);
-            for (EnterOrderRq sellDisabled : sellDisabledRqs.allOrderRqs()) {
-                if (sellDisabled.getStopPrice() >= lastTradePrice) {
-                    toRemove.addOrderRq(sellDisabled);
-                    sellDisabledRqs.removeById(sellDisabled.getOrderId());
-                    sellDisabledOrders.removeById(sellDisabled.getOrderId());
-                    if (!sellEnabledRqs.exist(sellDisabled.getOrderId()))
-                        sellEnabledRqs.addOrderRq(sellDisabled);
-                }
-            }
-            for(EnterOrderRq current : toRemove.allOrderRqs())
-                sellDisabledRqs.removeById(current.getOrderId());
-        }
     }
 }
