@@ -114,15 +114,8 @@ public class OrderHandler {
             errors.add(Message.ORDER_MINIMUM_EXEC_QUANTITY_NEGATIVE);
         if (enterOrderRq.getMinimumExecutionQuantity() > enterOrderRq.getQuantity())
             errors.add(Message.ORDER_MINIMUM_EXEC_QUANTITY_BIGGER_THAN_QUANTITY);
-        if (enterOrderRq.getStopPrice() != 0){
-            if(enterOrderRq.getStopPrice() < 0)
-                errors.add(Message.STOP_PRICE_NEGATIVE);
-            if(enterOrderRq.getMinimumExecutionQuantity() != 0)
-                errors.add(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY);
-            if(enterOrderRq.getPeakSize() != 0)
-                errors.add(Message.STOP_ORDER_IS_ICEBERG_TOO);
-
-        }
+        if (enterOrderRq.getStopPrice() != 0)
+            validateEnterStopOrder(enterOrderRq, errors);
         Security security = securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin());
         if (security == null)
             errors.add(Message.UNKNOWN_SECURITY_ISIN);
@@ -140,6 +133,15 @@ public class OrderHandler {
             errors.add(Message.INVALID_PEAK_SIZE);
         if (!errors.isEmpty())
             throw new InvalidRequestException(errors);
+    }
+
+    private void validateEnterStopOrder(EnterOrderRq enterOrderRq, List<String> errors){
+        if(enterOrderRq.getStopPrice() < 0)
+            errors.add(Message.STOP_PRICE_NEGATIVE);
+        if(enterOrderRq.getMinimumExecutionQuantity() != 0)
+            errors.add(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY);
+        if(enterOrderRq.getPeakSize() != 0)
+            errors.add(Message.STOP_ORDER_IS_ICEBERG_TOO);
     }
 
     private void validateDeleteOrderRq(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
