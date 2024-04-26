@@ -66,17 +66,29 @@ public class OrderHandler {
             else
                 eventPublisher.publish(new OrderUpdatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
             if(matchResult.outcome() == MatchingOutcome.EXECUTED && enterOrderRq.getStopPrice() != 0) {
-                enterOrderRq.setStopPriceZero();
-                eventPublisher.publish(new OrderActivatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
+                applyActivationEffects(enterOrderRq);
             }
             if (!matchResult.trades().isEmpty()) {
-                enterOrderRq.setStopPriceZero();
-                applyExecuteEffects(enterOrderRq, security, matchResult);
-                executeEnabledOrders(security, broker, shareholder);
+                applyExecutionEffects(enterOrderRq, matchResult);
             }
         } catch (InvalidRequestException ex) {
             eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), ex.getReasons()));
         }
+    }
+
+    private void applyActivationEffects(EnterOrderRq rq){
+        rq.setStopPriceZero();
+        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
+    }
+
+    private void applyExecutionEffects(EnterOrderRq rq, MatchResult matchResult){
+        Security security = securityRepository.findSecurityByIsin(rq.getSecurityIsin());
+        Broker broker = brokerRepository.findBrokerById(rq.getBrokerId());
+        Shareholder shareholder = shareholderRepository.findShareholderById(rq.getShareholderId());
+
+        rq.setStopPriceZero();
+        applyExecuteEffects(rq, security, matchResult);
+        executeEnabledOrders(security, broker, shareholder);
     }
 
     public void handleDeleteOrder(DeleteOrderRq deleteOrderRq) {
