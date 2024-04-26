@@ -185,7 +185,7 @@ public class Order {
 
     public void setStopPriceZero() { stopPrice = 0; }
 
-    public boolean isAllowedToUpdateStopLimitOrder(long orderId, String Isin, long brokerId, Side side,
+    public boolean isUpdatingStopOrderPossible(long orderId, String Isin, long brokerId, Side side,
                                                    long shareholderId) {
         return  orderId == this.orderId &&
                 Objects.equals(Isin, this.security.getIsin()) &&

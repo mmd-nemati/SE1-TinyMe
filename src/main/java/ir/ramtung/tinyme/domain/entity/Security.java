@@ -119,7 +119,7 @@ public class Security {
                 throw new InvalidRequestException(Message.STOP_ORDER_IS_ICEBERG_TOO);
             if (updateOrderRq.getMinimumExecutionQuantity() != 0)
                 throw new InvalidRequestException(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY);
-            if (!order.isAllowedToUpdateStopLimitOrder(updateOrderRq.getOrderId(), updateOrderRq.getSecurityIsin(), updateOrderRq.getBrokerId(), updateOrderRq.getSide(), updateOrderRq.getShareholderId()))
+            if (!order.isUpdatingStopOrderPossible(updateOrderRq.getOrderId(), updateOrderRq.getSecurityIsin(), updateOrderRq.getBrokerId(), updateOrderRq.getSide(), updateOrderRq.getShareholderId()))
                 throw new InvalidRequestException(Message.CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION);
         }
         if (updateOrderRq.getSide() == Side.SELL &&
