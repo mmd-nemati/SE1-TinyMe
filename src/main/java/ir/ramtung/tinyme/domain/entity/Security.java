@@ -64,11 +64,11 @@ public class Security {
                     enterOrderRq.getMinimumExecutionQuantity());
 
         MatchResult result = matcher.execute(order, lastTradePrice);
-        handleAcceptingState(result);
+        handleAcceptingState(result, enterOrderRq, order);
         return result;
     }
 
-    private void handleAcceptingState(MatchResult result){
+    private void handleAcceptingState(MatchResult result, EnterOrderRq enterOrderRq, Order order){
         if(result.outcome() == MatchingOutcome.ACCEPTED){
             if(enterOrderRq.getSide() == Side.BUY) {
                 buyDisabledRqs.addOrderRq(enterOrderRq);
