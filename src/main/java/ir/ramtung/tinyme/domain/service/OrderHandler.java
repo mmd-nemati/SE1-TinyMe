@@ -9,10 +9,7 @@ import ir.ramtung.tinyme.messaging.event.*;
 import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.messaging.request.OrderEntryType;
-import ir.ramtung.tinyme.repository.BrokerRepository;
-import ir.ramtung.tinyme.repository.EnterOrderRqRepo;
-import ir.ramtung.tinyme.repository.SecurityRepository;
-import ir.ramtung.tinyme.repository.ShareholderRepository;
+import ir.ramtung.tinyme.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -69,7 +66,7 @@ public class OrderHandler {
                 applyActivationEffects(enterOrderRq);
             }
             if (!matchResult.trades().isEmpty()) {
-                applyExecutionEffects(enterOrderRq, matchResult);
+                applyExecutionEffects(security, enterOrderRq, matchResult);
             }
         } catch (InvalidRequestException ex) {
             eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), ex.getReasons()));
@@ -81,9 +78,9 @@ public class OrderHandler {
         eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
     }
 
-    private void applyExecutionEffects(EnterOrderRq rq, MatchResult matchResult){
+    private void applyExecutionEffects(Security security, EnterOrderRq rq, MatchResult matchResult){
         rq.setStopPriceZero();
-        applyExecuteEffects(rq, matchResult);
+        applyExecuteEffects(security, rq.getOrderId(), rq.getRequestId(),  matchResult);
         executeEnabledOrders(rq);
     }
 
@@ -157,37 +154,35 @@ public class OrderHandler {
 
     private boolean isEnabledOver(Side side, Security security){
         return(
-                (side == Side.BUY && (security.getBuyEnabledRqs().theSize() == 0))
+                (side == Side.BUY && (security.getBuyEnabledOrders().theSize() == 0))
                 ||
-                (side == Side.SELL && (security.getSellEnabledRqs().theSize() == 0))
+                (side == Side.SELL && (security.getSellEnabledOrders().theSize() == 0))
                 );
     }
 
-    private void executeTheEnabled(EnterOrderRq rq, Side side){
-        Security security = securityRepository.findSecurityByIsin(rq.getSecurityIsin());
-        Broker broker = brokerRepository.findBrokerById(rq.getBrokerId());
-        Shareholder shareholder = shareholderRepository.findShareholderById(rq.getShareholderId());
+    private void executeTheEnabled(Order order, long reqId, Side side){
+        Security security = order.getSecurity();
 
-        security.removeEnabledOrder(rq.getOrderId(), side);
-        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
-        rq.setStopPriceZero();
+        security.removeEnabledOrder(reqId, side);
+        eventPublisher.publish(new OrderActivatedEvent(reqId, order.getOrderId()));
+        order.setStopPriceZero();
 
-        MatchResult matchResult = security.newOrder(rq, broker, shareholder, matcher);
+        MatchResult matchResult = security.handleEnterOrder(order, reqId, matcher);
         if (!matchResult.trades().isEmpty())
-            applyExecuteEffects(rq, matchResult);
+            applyExecuteEffects(security, order.getOrderId(), reqId, matchResult);
     }
 
     private void execBuyAndSell(EnterOrderRq enterRq, Side side){
         Security security = securityRepository.findSecurityByIsin(enterRq.getSecurityIsin());
-        EnterOrderRqRepo reqs;
+        EnterOrderRepo orders;
         if(side == Side.BUY)
-            reqs = security.getBuyEnabledRqs().makeCopy();
+            orders = security.getBuyEnabledOrders().makeCopy();
         else
-            reqs = security.getBuyEnabledRqs().makeCopy();
+            orders = security.getSellEnabledOrders().makeCopy();
 
-        if(reqs != null) {
-            for (EnterOrderRq rq : reqs.allOrderRqs())
-                executeTheEnabled(rq, side);
+        if(orders != null) {
+            for (long reqId : orders.allOrdekeys())
+                executeTheEnabled(orders.findByRqId(reqId), reqId, side);
         }
 
         if(isEnabledOver(side, security))
@@ -196,10 +191,9 @@ public class OrderHandler {
         execBuyAndSell(enterRq, side);
     }
 
-    private void applyExecuteEffects(EnterOrderRq rq, MatchResult matchResult){
-        Security security = securityRepository.findSecurityByIsin(rq.getSecurityIsin());
+    private void applyExecuteEffects(Security security, long orderId, long reqId, MatchResult matchResult){
 
-        eventPublisher.publish(new OrderExecutedEvent(rq.getRequestId(), rq.getOrderId(),
+        eventPublisher.publish(new OrderExecutedEvent(reqId, orderId,
                 matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
         
         security.updateLastTradePrice(matchResult.trades().getLast().getPrice());

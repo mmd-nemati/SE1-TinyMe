@@ -13,30 +13,49 @@ public class EnterOrderRepo {
         this.ascendingStore = ascendingStore;
     }
 
-    public Order findOrderById(Long id) {
+    public Order findByRqId(Long id) {
         return orderById.get(id);
     }
-    public void addOrder(Order order) {
+    public long findKeyByOrderId(Long id) {
+        for(long rqId : orderById.keySet()){
+            if(orderById.get(rqId).getOrderId() == id)
+                return(rqId);
+        }
+        return(id);
+    }
+    private boolean isRightPlace(Order inHashRq, Order newRq){
+        return(
+                (ascendingStore && (inHashRq.getStopPrice()
+                        > newRq.getStopPrice()))
+                        ||
+                        (!ascendingStore && (inHashRq.getStopPrice()
+                                < newRq.getStopPrice()))
+        );
+    }
+    public void addOrder(Order newRq, long reqId) {
         if(orderById.isEmpty())
-            orderById.put(order.getOrderId(), order);
+            orderById.put(reqId, newRq);
         else{
-            for(Order or1 : orderById.values()){
-                if(ascendingStore && (or1.getStopPrice() > order.getStopPrice())){
-                    orderById.put(order.getOrderId(), order);
-                    return;
-                }
-                if(!ascendingStore && (or1.getStopPrice() < order.getStopPrice())){
-                    orderById.put(order.getOrderId(), order);
-                    return;
-                }
+            for(Order inHashOrder : orderById.values()){
+                if(isRightPlace(inHashOrder, newRq))
+                    break;
             }
         }
-        orderById.put(order.getOrderId(), order);
+        orderById.put(reqId, newRq);
     }
     public void clear() {
         orderById.clear();
     }
     public void removeById(Long id) { if(exist(id))orderById.remove(id); }
     public boolean exist(Long id) { return(orderById.containsKey(id)); }
-    public Iterable<? extends Order> allOrderRqs() { return orderById.values(); }
+
+    public int theSize(){ return( orderById.size()); }
+    public EnterOrderRepo makeCopy(){
+        EnterOrderRepo cloned = new EnterOrderRepo(ascendingStore);
+        for(long currentKey : orderById.keySet())
+            cloned.addOrder(orderById.get(currentKey), currentKey);
+
+        return(cloned);
+    }
+    public Iterable<? extends Long> allOrdekeys() { return orderById.keySet(); }
 }

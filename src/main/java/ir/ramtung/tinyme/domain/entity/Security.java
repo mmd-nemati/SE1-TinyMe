@@ -6,7 +6,6 @@ import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.repository.EnterOrderRepo;
-import ir.ramtung.tinyme.repository.EnterOrderRqRepo;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -28,20 +27,15 @@ public class Security {
     private final static boolean DESENDING = false;
 
     @Builder.Default
-    EnterOrderRqRepo buyDisabledRqs = new EnterOrderRqRepo(ASCENDING);
-    @Builder.Default
-    EnterOrderRqRepo buyEnabledRqs = new EnterOrderRqRepo(ASCENDING);
-
-    @Builder.Default
-    EnterOrderRqRepo sellDisabledRqs = new EnterOrderRqRepo(DESENDING);
-    @Builder.Default
-    EnterOrderRqRepo sellEnabledRqs = new EnterOrderRqRepo(DESENDING);
-
-    @Builder.Default
     EnterOrderRepo buyDisabledOrders = new EnterOrderRepo(ASCENDING);
 
     @Builder.Default
+    EnterOrderRepo buyEnabledOrders = new EnterOrderRepo(ASCENDING);
+
+    @Builder.Default
     EnterOrderRepo sellDisabledOrders = new EnterOrderRepo(DESENDING);
+    @Builder.Default
+    EnterOrderRepo sellEnabledOrders = new EnterOrderRepo(DESENDING);
 
     @Builder.Default
     int lastTradePrice = 0;
@@ -63,33 +57,34 @@ public class Security {
                     enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW,
                     enterOrderRq.getMinimumExecutionQuantity());
 
-        MatchResult result = matcher.execute(order, lastTradePrice);
-        handleAcceptingState(result, enterOrderRq, order);
-        return result;
+        return handleEnterOrder(order, enterOrderRq.getRequestId(), matcher);
     }
 
-    private void handleAcceptingState(MatchResult result, EnterOrderRq enterOrderRq, Order order){
+    public MatchResult handleEnterOrder(Order order, long reqId, Matcher matcher){
+        MatchResult result = matcher.execute(order, lastTradePrice);
+        handleAcceptingState(result, order, reqId);
+        return (result);
+    }
+
+    private void handleAcceptingState(MatchResult result, Order order, long rqId){
         if(result.outcome() == MatchingOutcome.ACCEPTED){
-            if(enterOrderRq.getSide() == Side.BUY) {
-                buyDisabledRqs.addOrderRq(enterOrderRq);
-                buyDisabledOrders.addOrder(order);
-            }
-            else {
-                sellDisabledRqs.addOrderRq(enterOrderRq);
-                sellDisabledOrders.addOrder(order);
-            }
+            if(order.getSide() == Side.BUY)
+                buyDisabledOrders.addOrder(order, rqId);
+            else
+                sellDisabledOrders.addOrder(order, rqId);
         }
     }
 
     public void deleteOrder(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
         Order order = orderBook.findByOrderId(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
         if (order == null) {
-            if (buyDisabledRqs.exist(deleteOrderRq.getOrderId()))
-                order = buyDisabledOrders.findOrderById(deleteOrderRq.getOrderId());
-            else if (sellDisabledOrders.exist(deleteOrderRq.getOrderId()))
-                order = sellDisabledOrders.findOrderById(deleteOrderRq.getOrderId());
+            long buyRqId = buyDisabledOrders.findKeyByOrderId(deleteOrderRq.getOrderId());
+            long sellRqId = sellDisabledOrders.findKeyByOrderId(deleteOrderRq.getOrderId());
+            if (buyDisabledOrders.exist(buyRqId))
+                order = buyDisabledOrders.findByRqId(buyRqId);
+            else if (sellDisabledOrders.exist(sellRqId))
+                order = sellDisabledOrders.findByRqId(sellRqId);
             else
-            if (!buyDisabledRqs.exist(deleteOrderRq.getOrderId()) && !sellDisabledRqs.exist(deleteOrderRq.getOrderId()))
                 throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
         }
         if (order.getSide() == Side.BUY)
@@ -100,12 +95,13 @@ public class Security {
     public MatchResult updateOrder(EnterOrderRq updateOrderRq, Matcher matcher) throws InvalidRequestException {
         Order order = orderBook.findByOrderId(updateOrderRq.getSide(), updateOrderRq.getOrderId());
         if (order == null) {
-            if (buyDisabledRqs.exist(updateOrderRq.getOrderId()))
-                order = buyDisabledOrders.findOrderById(updateOrderRq.getOrderId());
-            else if (sellDisabledOrders.exist(updateOrderRq.getOrderId()))
-                order = sellDisabledOrders.findOrderById(updateOrderRq.getOrderId());
+            long buyRqId = buyDisabledOrders.findKeyByOrderId(updateOrderRq.getOrderId());
+            long sellRqId = sellDisabledOrders.findKeyByOrderId(updateOrderRq.getOrderId());
+            if (buyDisabledOrders.exist(buyRqId))
+                order = buyDisabledOrders.findByRqId(buyRqId);
+            else if (sellDisabledOrders.exist(sellRqId))
+                order = sellDisabledOrders.findByRqId(sellRqId);
             else
-            if (!buyDisabledRqs.exist(updateOrderRq.getOrderId()) && !sellDisabledRqs.exist(updateOrderRq.getOrderId()))
                 throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
         }
 
@@ -160,11 +156,11 @@ public class Security {
         return matchResult;
     }
     public void handleDisabledOrders(){
-       handleEachDisabled(buyDisabledRqs, buyEnabledRqs, true);
-       handleEachDisabled(sellDisabledRqs, sellEnabledRqs, false);
+       handleEachDisabled(buyDisabledOrders, buyEnabledOrders, true);
+       handleEachDisabled(sellDisabledOrders, sellEnabledOrders, false);
     }
 
-    private boolean isActivationReady(boolean isBuySide, EnterOrderRq disabled){
+    private boolean isActivationReady(boolean isBuySide, Order disabled){
         return (
                 (isBuySide &&
                 disabled.getStopPrice() <= lastTradePrice)
@@ -174,34 +170,34 @@ public class Security {
         );
     }
 
-    private void enableTheRq(EnterOrderRq disabled, EnterOrderRqRepo toRemove, EnterOrderRqRepo enabledRqs){
-        toRemove.addOrderRq(disabled);
-        buyDisabledOrders.removeById(disabled.getOrderId());
+    private void enableTheRq(Order disabled, EnterOrderRepo toRemove,
+                             EnterOrderRepo enabledRqs, long disabledKey){
+        toRemove.addOrder(disabled, disabledKey);
         if (!enabledRqs.exist(disabled.getOrderId()))
-            enabledRqs.addOrderRq(disabled);
+            enabledRqs.addOrder(disabled, disabledKey);
     }
 
-    private void handleEachDisabled(EnterOrderRqRepo disabledRqs,
-                                    EnterOrderRqRepo enabledRqs, boolean isBuySide){
+    private void handleEachDisabled(EnterOrderRepo disabledRqs,
+                                    EnterOrderRepo enabledRqs, boolean isBuySide){
         if(disabledRqs != null) {
-            EnterOrderRqRepo toRemove = new EnterOrderRqRepo(ASCENDING);
-            for (EnterOrderRq disabled : disabledRqs.allOrderRqs()) {
-                if (isActivationReady(isBuySide, disabled)) {
-                    enableTheRq(disabled, toRemove, enabledRqs);
-                }
+            EnterOrderRepo toRemove = new EnterOrderRepo(ASCENDING);
+            for (long disabledKey : disabledRqs.allOrdekeys()) {
+                if (isActivationReady(isBuySide, disabledRqs.findByRqId(disabledKey)))
+                    enableTheRq(disabledRqs.findByRqId(disabledKey),
+                            toRemove, enabledRqs, disabledKey);
             }
-            for(EnterOrderRq current : toRemove.allOrderRqs())
-                disabledRqs.removeById(current.getOrderId());
+            for(long removeKey : toRemove.allOrdekeys())
+                disabledRqs.removeById(removeKey);
         }
     }
     public void updateLastTradePrice(int lastTradePrice){
         this.lastTradePrice = lastTradePrice;
     }
 
-    public void removeEnabledOrder(long orderId, Side side){
+    public void removeEnabledOrder(long rqId, Side side){
         if(side == Side.BUY)
-            buyEnabledRqs.removeById(orderId);
+            buyEnabledOrders.removeById(rqId);
         else
-            sellEnabledRqs.removeById(orderId);
+            sellEnabledOrders.removeById(rqId);
     }
 }
