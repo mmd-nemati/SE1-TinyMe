@@ -114,7 +114,7 @@ public class Matcher {
 
     public MatchResult execute(Order order, int lastTradePrice){
         MatchResult result;
-        if(order.getStopPrice() != 0) {
+        if(order.isStopLimitOrder()) {
             result = recognizeOutcome(order, lastTradePrice);
             if(result.outcome() != MatchingOutcome.ACTIVATED)
                 return(result);

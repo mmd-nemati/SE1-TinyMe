@@ -73,7 +73,7 @@ public class StopOrderTest {
                 shareholder.getShareholderId(), 0, 150, 20));
 
         verify(eventPublisher).publish(new OrderRejectedEvent(1, 6,
-                List.of(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY)));
+                List.of(Message.STOP_ORDER_CANNOT_HAVE_MINIMUM_EXEC_QUANTITY)));
     }
 
     @Test
@@ -83,7 +83,7 @@ public class StopOrderTest {
                 shareholder.getShareholderId(), 40, 0, 20));
 
         verify(eventPublisher).publish(new OrderRejectedEvent(1, 10,
-                List.of(Message.STOP_ORDER_IS_ICEBERG_TOO)));
+                List.of(Message.STOP_ORDER_CANNOT_BE_ICEBERG_TOO)));
     }
 
     @Test
@@ -93,7 +93,7 @@ public class StopOrderTest {
                 shareholder.getShareholderId(), 0, 0, -100));
 
         verify(eventPublisher).publish(new OrderRejectedEvent(1, 6,
-                List.of(Message.STOP_PRICE_NEGATIVE)));
+                List.of(Message.STOP_PRICE_CANNOT_BE_NEGATIVE)));
     }
 
     @Test
@@ -225,7 +225,7 @@ public class StopOrderTest {
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 10, 80));
 
-        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY)));
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.STOP_ORDER_CANNOT_HAVE_MINIMUM_EXEC_QUANTITY)));
     }
 
     @Test
@@ -238,7 +238,7 @@ public class StopOrderTest {
                 LocalDateTime.now(), Side.SELL, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 10, 0, 80));
 
-        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.STOP_ORDER_IS_ICEBERG_TOO)));
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.STOP_ORDER_CANNOT_BE_ICEBERG_TOO)));
     }
 
     @Test

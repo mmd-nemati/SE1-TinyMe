@@ -9,9 +9,7 @@ import ir.ramtung.tinyme.repository.EnterOrderRepo;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Iterator;
 
 @Getter
 @Builder
@@ -105,20 +103,20 @@ public class Security {
                 throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
         }
 
-        if ((order instanceof IcebergOrder) && updateOrderRq.getPeakSize() == 0)
+        if ((order instanceof IcebergOrder) && !updateOrderRq.isIcebergOrderRq())
             throw new InvalidRequestException(Message.INVALID_PEAK_SIZE);
-        if (!(order instanceof IcebergOrder) && updateOrderRq.getPeakSize() != 0)
+        if (!(order instanceof IcebergOrder) && updateOrderRq.isIcebergOrderRq())
             throw new InvalidRequestException(Message.CANNOT_SPECIFY_PEAK_SIZE_FOR_A_NON_ICEBERG_ORDER);
         if (order.getMinimumExecutionQuantity() != updateOrderRq.getMinimumExecutionQuantity())
             throw new InvalidRequestException(Message.CANNOT_CHANGE_MINIMUM_EXEC_QUANTITY);
-        if (order.getStopPrice() == 0 && updateOrderRq.getStopPrice() != 0)
+        if (!order.isStopLimitOrder() && updateOrderRq.isStopLimitOrderRq())
             throw new InvalidRequestException(Message.CANNOT_CHANGE_STOP_PRICE_FOR_ACTIVATED);
 
-        if (order.getStopPrice() != 0) {
-            if (updateOrderRq.getPeakSize() != 0)
-                throw new InvalidRequestException(Message.STOP_ORDER_IS_ICEBERG_TOO);
-            if (updateOrderRq.getMinimumExecutionQuantity() != 0)
-                throw new InvalidRequestException(Message.STOP_LIMIT_AND_MINIMUM_EXEC_QUANTITY);
+        if (order.isStopLimitOrder()) {
+            if (updateOrderRq.isIcebergOrderRq())
+                throw new InvalidRequestException(Message.STOP_ORDER_CANNOT_BE_ICEBERG_TOO);
+            if (updateOrderRq.hasMinimumExecutionQuantity())
+                throw new InvalidRequestException(Message.STOP_ORDER_CANNOT_HAVE_MINIMUM_EXEC_QUANTITY);
             if (!order.isUpdatingStopOrderPossible(updateOrderRq.getOrderId(), updateOrderRq.getSecurityIsin(), updateOrderRq.getBrokerId(), updateOrderRq.getSide(), updateOrderRq.getShareholderId()))
                 throw new InvalidRequestException(Message.CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION);
         }

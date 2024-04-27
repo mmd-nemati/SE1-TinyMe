@@ -110,6 +110,11 @@ public class EnterOrderRq {
                 peakSize, minimumExecutionQuantity, stopPrice);
     }
 
-    public void setStopPriceZero(){ stopPrice = 0; }
+    public void setStopPriceZero() { stopPrice = 0; }
 
+    public boolean isStopLimitOrderRq() { return stopPrice != 0; }
+
+    public boolean isIcebergOrderRq() { return peakSize != 0; }
+
+    public boolean hasMinimumExecutionQuantity() { return minimumExecutionQuantity != 0; }
 }

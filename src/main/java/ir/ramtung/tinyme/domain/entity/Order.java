@@ -193,5 +193,7 @@ public class Order {
                 shareholderId == this.shareholder.getShareholderId() &&
                 brokerId == this.broker.getBrokerId();
     }
+
+    public boolean isStopLimitOrder() { return stopPrice != 0; }
 }
 
