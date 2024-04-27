@@ -80,7 +80,7 @@ public class OrderHandler {
 
     private void applyExecutionEffects(Security security, EnterOrderRq rq, MatchResult matchResult){
         rq.setStopPriceZero();
-        applyExecuteEffects(security, rq.getOrderId(), rq.getRequestId(),  matchResult);
+        applyExecutionUpdates(security, rq.getOrderId(), rq.getRequestId(),  matchResult);
         executeEnabledOrders(rq);
     }
 
@@ -169,7 +169,7 @@ public class OrderHandler {
 
         MatchResult matchResult = security.handleEnterOrder(order, reqId, matcher);
         if (!matchResult.trades().isEmpty())
-            applyExecuteEffects(security, order.getOrderId(), reqId, matchResult);
+            applyExecutionUpdates(security, order.getOrderId(), reqId, matchResult);
     }
 
     private void execBuyAndSell(EnterOrderRq enterRq, Side side){
@@ -191,7 +191,7 @@ public class OrderHandler {
         execBuyAndSell(enterRq, side);
     }
 
-    private void applyExecuteEffects(Security security, long orderId, long reqId, MatchResult matchResult){
+    private void applyExecutionUpdates(Security security, long orderId, long reqId, MatchResult matchResult){
 
         eventPublisher.publish(new OrderExecutedEvent(reqId, orderId,
                 matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
