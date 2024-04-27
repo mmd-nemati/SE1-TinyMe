@@ -2,7 +2,6 @@ package ir.ramtung.tinyme.domain;
 
 import ir.ramtung.tinyme.config.MockedJMSTestConfig;
 import ir.ramtung.tinyme.domain.entity.*;
-import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.domain.service.OrderHandler;
 import ir.ramtung.tinyme.messaging.EventPublisher;
 import ir.ramtung.tinyme.messaging.Message;
@@ -21,7 +20,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,8 +40,6 @@ public class StopOrderTest {
     BrokerRepository brokerRepository;
     @Autowired
     ShareholderRepository shareholderRepository;
-    @Autowired
-    private Matcher matcher;
     private Security security;
     private Shareholder shareholder;
     private Broker sellBroker;
@@ -65,9 +61,11 @@ public class StopOrderTest {
 
         sellBroker = Broker.builder().brokerId(1).build();
         buyBroker = Broker.builder().brokerId(2).build();
+        buyBroker.increaseCreditBy(100_000_000);
         brokerRepository.addBroker(sellBroker);
         brokerRepository.addBroker(buyBroker);
     }
+
     @Test
     void reject_min_exec_for_stop_order() {
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
@@ -109,7 +107,6 @@ public class StopOrderTest {
 
     @Test
     void activate_stop_orders_enter_after_trade() {
-        buyBroker.increaseCreditBy(100_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
                 LocalDateTime.now(), Side.SELL, 50, 545, sellBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 0));
@@ -133,7 +130,6 @@ public class StopOrderTest {
 
     @Test
     void activate_stop_order_enter_before_trade() {
-        buyBroker.increaseCreditBy(100_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -151,7 +147,6 @@ public class StopOrderTest {
 
     @Test
     void activated_stop_order_has_correct_credit_after_trade() {
-        buyBroker.increaseCreditBy(100_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
                 LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 0));
@@ -168,13 +163,12 @@ public class StopOrderTest {
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
 
-        assertThat(buyBroker.getCredit()).isEqualTo(100_000 - 50 * 545 - 25 * 545);
+        assertThat(buyBroker.getCredit()).isEqualTo(100_000_000 - 50 * 545 - 25 * 545);
 
     }
 
     @Test
     void reject_update_stop_price_after_activation() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
                 LocalDateTime.now(), Side.SELL, 150, 545, sellBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 0));
@@ -197,7 +191,6 @@ public class StopOrderTest {
 
     @Test
     void accept_update_before_activation() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -211,7 +204,6 @@ public class StopOrderTest {
 
     @Test
     void reject_update_not_allowed_fields_before_activation() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -225,7 +217,6 @@ public class StopOrderTest {
 
     @Test
     void reject_update_not_allowed_to_change_min_Execution_Quantity() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -239,7 +230,6 @@ public class StopOrderTest {
 
     @Test
     void reject_update_not_allowed_to_convert_to_icebergOrder() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -250,21 +240,19 @@ public class StopOrderTest {
 
         verify(eventPublisher).publish(new OrderRejectedEvent(2, 10, List.of(Message.STOP_ORDER_IS_ICEBERG_TOO)));
     }
+
     @Test
     void delete_stop_order_before_activation() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
 
         orderHandler.handleDeleteOrder(new DeleteOrderRq(2, security.getIsin(), Side.BUY, 10));
-        // TODO -> Message?
         verify(eventPublisher).publish(new OrderDeletedEvent(2, 10));
     }
 
     @Test
     void delete_stop_order_before_activation_not_found() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -276,7 +264,6 @@ public class StopOrderTest {
 
     @Test
     void activate_multiple_buy_stop_order_enter_before_trade() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -302,10 +289,8 @@ public class StopOrderTest {
         verify(eventPublisher).publish(new OrderActivatedEvent(4, 11));
     }
 
-
     @Test
     void activate_multiple_sell_stop_order_enter_before_trade() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
                 LocalDateTime.now(), Side.SELL, 25, 580, sellBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 600));
@@ -333,7 +318,6 @@ public class StopOrderTest {
 
     @Test
     void activated_stop_order_publishes_executed_after_trade() {
-        buyBroker.increaseCreditBy(100_000);
         security.updateLastTradePrice(300);
         Order o1 = new Order(6, security, Side.SELL, 150, 545, sellBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
@@ -367,9 +351,9 @@ public class StopOrderTest {
         verify(eventPublisher).publish(new OrderExecutedEvent(4, 11, List.of(new TradeDTO(t2))));
         verify(eventPublisher).publish(new OrderExecutedEvent(5, 12, List.of(new TradeDTO(t3))));
     }
+
     @Test
     void update_stop_order_before_activation_not_found() {
-        buyBroker.increaseCreditBy(100_000_000);
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 10,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 100));
@@ -380,10 +364,4 @@ public class StopOrderTest {
 
         verify(eventPublisher).publish(new OrderRejectedEvent(2, 12, List.of(Message.ORDER_ID_NOT_FOUND)));
     }
-//    @Test
-//    void delete_stop_order_before_activation() {
-//
-//    }
-//    @Test
-//    void
 }
