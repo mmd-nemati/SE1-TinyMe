@@ -61,7 +61,7 @@ public class OrderHandler {
                 eventPublisher.publish(new OrderAcceptedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
             else
                 eventPublisher.publish(new OrderUpdatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
-            if(matchResult.outcome() == MatchingOutcome.EXECUTED && enterOrderRq.getStopPrice() != 0) {
+            if(matchResult.outcome() == MatchingOutcome.EXECUTED && enterOrderRq.isStopLimitOrderRq()) {
                 applyActivationEffects(enterOrderRq);
             }
             if (!matchResult.trades().isEmpty()) {

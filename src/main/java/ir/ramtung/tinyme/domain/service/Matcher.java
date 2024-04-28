@@ -73,17 +73,16 @@ public class Matcher {
     }
 
     private MatchResult recognizeOutcome(Order order, int lastTradePrice){
-        if (order.getSide() == Side.BUY) {
-            if (!order.getBroker().hasEnoughCredit(order.getValue()))
-                return MatchResult.notEnoughCredit();
-            if(order.getStopPrice() > lastTradePrice)
-                return(MatchResult.accepted());
-        }
-        if(order.getSide() == Side.SELL){
-            if(order.getStopPrice() < lastTradePrice)
-                return(MatchResult.accepted());
-        }
-        return(MatchResult.activated());
+        if (order.getSide() == Side.BUY && !order.getBroker().hasEnoughCredit(order.getValue()))
+            return MatchResult.notEnoughCredit();
+
+        if (order.getSide() == Side.BUY && order.getStopPrice() > lastTradePrice)
+            return MatchResult.accepted();
+
+        if (order.getSide() == Side.SELL && order.getStopPrice() < lastTradePrice)
+            return MatchResult.accepted();
+
+        return MatchResult.activated();
     }
 
     public MatchResult execute(Order order) {
