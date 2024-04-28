@@ -352,9 +352,12 @@ public class StopOrderTest {
 
         Trade t1 = new Trade(security, 545, 50, o1, o3);
         Trade t2 = new Trade(security, 545, 25, o1, o2);
+        Trade t3 = new Trade(security, 545, 25, o1, o4);
 
         verify(eventPublisher).publish(new OrderExecutedEvent(4, 11, List.of(new TradeDTO(t1))));
         verify(eventPublisher).publish(new OrderExecutedEvent(3, 10, List.of(new TradeDTO(t2))));
+        verify(eventPublisher, never()).publish(new OrderExecutedEvent(5, 12, List.of(new TradeDTO(t3))));
+
     }
 
     @Test
@@ -383,9 +386,11 @@ public class StopOrderTest {
 
         Trade t1 = new Trade(security, 170, 50, o1, o3);
         Trade t2 = new Trade(security, 170, 25, o1, o2);
+        Trade t3 = new Trade(security, 170, 25, o1, o4);
 
         verify(eventPublisher).publish(new OrderExecutedEvent(4, 11, List.of(new TradeDTO(t1))));
         verify(eventPublisher).publish(new OrderExecutedEvent(3, 10, List.of(new TradeDTO(t2))));
+        verify(eventPublisher, never()).publish(new OrderExecutedEvent(5, 12, List.of(new TradeDTO(t3))));
     }
 
     @Test
