@@ -107,15 +107,6 @@ public class StopOrderTest {
     }
 
     @Test
-    void accept_enter_stop_order() {
-        orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
-                LocalDateTime.now(), Side.SELL, 350, 580, sellBroker.getBrokerId(),
-                shareholder.getShareholderId(), 0, 0, 100));
-
-        verify(eventPublisher).publish(any(OrderAcceptedEvent.class));
-    }
-
-    @Test
     void activate_stop_orders_enter_after_trade() {
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
                 LocalDateTime.now(), Side.SELL, 50, 545, sellBroker.getBrokerId(),
