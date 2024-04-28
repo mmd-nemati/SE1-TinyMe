@@ -180,7 +180,7 @@ public class OrderHandler {
             orders = security.getSellEnabledOrders().makeCopy();
 
         if(orders != null) {
-            for (long reqId : orders.allOrdekeys())
+            for (long reqId : orders.allOrderKeysSortedByStopPrice())
                 executeTheEnabled(orders.findByRqId(reqId), reqId, side);
         }
 

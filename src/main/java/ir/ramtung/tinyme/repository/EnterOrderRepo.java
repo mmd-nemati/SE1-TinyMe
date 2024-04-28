@@ -3,8 +3,8 @@ package ir.ramtung.tinyme.repository;
 import ir.ramtung.tinyme.domain.entity.Order;
 
 import java.util.HashMap;
-import java.util.Map;
 
+import java.util.*;
 public class EnterOrderRepo {
     private final HashMap<Long, Order> orderById;
     boolean ascendingStore;
@@ -23,14 +23,6 @@ public class EnterOrderRepo {
                 .filter(order -> order.getOrderId() == orderId)
                 .findFirst()
                 .orElse(null);
-    }
-
-    public long findKeyByOrderId(long id) {
-        return orderById.entrySet().stream()
-                .filter(entry -> entry.getValue().getOrderId() == id)
-                .mapToLong(Map.Entry::getKey)
-                .findFirst()
-                .orElse(id);
     }
 
     private boolean isRightPlace(Order inHashRq, Order newRq){
@@ -55,7 +47,6 @@ public class EnterOrderRepo {
         orderById.put(reqId, newRq);
     }
 
-    public void clear() { orderById.clear(); }
 
     public void removeByRqId(long rqId) {
         if (existByRqId(rqId))
@@ -82,5 +73,15 @@ public class EnterOrderRepo {
         return(cloned);
     }
 
-    public Iterable<? extends Long> allOrdekeys() { return orderById.keySet(); }
+    public Iterable<? extends Long> allOrderKeysSortedByStopPrice() {
+        List<Long> sortedKeys = new ArrayList<>(orderById.keySet());
+        Comparator<Long> comparator = Comparator.comparing(orderId -> orderById.get(orderId).getStopPrice());
+
+        if (!ascendingStore)
+            comparator = comparator.reversed();
+
+        sortedKeys.sort(comparator);
+        return sortedKeys;
+    }
+
 }

@@ -22,7 +22,7 @@ public class Security {
     @Builder.Default
     private OrderBook orderBook = new OrderBook();
     private final static boolean ASCENDING = true;
-    private final static boolean DESENDING = false;
+    private final static boolean DESCENDING = false;
 
     @Builder.Default
     EnterOrderRepo buyDisabledOrders = new EnterOrderRepo(ASCENDING);
@@ -31,9 +31,9 @@ public class Security {
     EnterOrderRepo buyEnabledOrders = new EnterOrderRepo(ASCENDING);
 
     @Builder.Default
-    EnterOrderRepo sellDisabledOrders = new EnterOrderRepo(DESENDING);
+    EnterOrderRepo sellDisabledOrders = new EnterOrderRepo(DESCENDING);
     @Builder.Default
-    EnterOrderRepo sellEnabledOrders = new EnterOrderRepo(DESENDING);
+    EnterOrderRepo sellEnabledOrders = new EnterOrderRepo(DESCENDING);
 
     @Builder.Default
     int lastTradePrice = 0;
@@ -165,12 +165,12 @@ public class Security {
                                     EnterOrderRepo enabledRqs, boolean isBuySide){
         if(disabledRqs != null) {
             EnterOrderRepo toRemove = new EnterOrderRepo(ASCENDING);
-            for (long disabledKey : disabledRqs.allOrdekeys()) {
+            for (long disabledKey : disabledRqs.allOrderKeysSortedByStopPrice()) {
                 if (isActivationReady(isBuySide, disabledRqs.findByRqId(disabledKey)))
                     enableTheRq(disabledRqs.findByRqId(disabledKey),
                             toRemove, enabledRqs, disabledKey);
             }
-            for(long removeKey : toRemove.allOrdekeys())
+            for(long removeKey : toRemove.allOrderKeysSortedByStopPrice())
                 disabledRqs.removeByRqId(removeKey);
         }
     }
