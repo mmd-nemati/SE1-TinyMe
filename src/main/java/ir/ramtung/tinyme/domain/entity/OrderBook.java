@@ -42,6 +42,15 @@ public class OrderBook {
         return null;
     }
 
+    public boolean hasByOrderId(Side side, long orderId) {
+        var queue = getQueue(side);
+        for (Order order : queue) {
+            if (order.getOrderId() == orderId)
+                return true;
+        }
+        return false;
+    }
+
     public boolean removeByOrderId(Side side, long orderId) {
         var queue = getQueue(side);
         var it = queue.listIterator();

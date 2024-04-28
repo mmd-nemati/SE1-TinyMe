@@ -77,7 +77,13 @@ public class Security {
         Order order = findOrder(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
         if (order.getSide() == Side.BUY)
             order.getBroker().increaseCreditBy(order.getValue());
-        orderBook.removeByOrderId(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
+
+        if (orderBook.hasByOrderId(order.getSide(), order.getOrderId()))
+            orderBook.removeByOrderId(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
+        else if (buyDisabledOrders.existByOrderId(deleteOrderRq.getOrderId()))
+            buyDisabledOrders.removeByOrderId(deleteOrderRq.getOrderId());
+        else if (sellDisabledOrders.existByOrderId(deleteOrderRq.getOrderId()))
+            sellDisabledOrders.removeByOrderId(deleteOrderRq.getOrderId());
     }
 
     public MatchResult updateOrder(EnterOrderRq updateOrderRq, Matcher matcher) throws InvalidRequestException {
@@ -151,7 +157,7 @@ public class Security {
     private void enableTheRq(Order disabled, EnterOrderRepo toRemove,
                              EnterOrderRepo enabledRqs, long disabledKey){
         toRemove.addOrder(disabled, disabledKey);
-        if (!enabledRqs.exist(disabled.getOrderId()))
+        if (!enabledRqs.existByRqId(disabled.getOrderId()))
             enabledRqs.addOrder(disabled, disabledKey);
     }
 
@@ -165,7 +171,7 @@ public class Security {
                             toRemove, enabledRqs, disabledKey);
             }
             for(long removeKey : toRemove.allOrdekeys())
-                disabledRqs.removeById(removeKey);
+                disabledRqs.removeByRqId(removeKey);
         }
     }
     public void updateLastTradePrice(int lastTradePrice){
@@ -174,9 +180,9 @@ public class Security {
 
     public void removeEnabledOrder(long rqId, Side side){
         if(side == Side.BUY)
-            buyEnabledOrders.removeById(rqId);
+            buyEnabledOrders.removeByRqId(rqId);
         else
-            sellEnabledOrders.removeById(rqId);
+            sellEnabledOrders.removeByRqId(rqId);
     }
 
     private Order findOrder(Side side, long orderId) throws InvalidRequestException {
@@ -184,13 +190,13 @@ public class Security {
         if (order != null)
             return order;
 
-        long buyRqId = buyDisabledOrders.findKeyByOrderId(orderId);
-        if (buyDisabledOrders.exist(buyRqId))
-            return buyDisabledOrders.findByRqId(buyRqId);
+        order = buyDisabledOrders.findByOrderId(orderId);
+        if (order != null)
+            return order;
 
-        long sellRqId = sellDisabledOrders.findKeyByOrderId(orderId);
-        if (sellDisabledOrders.exist(sellRqId))
-            return sellDisabledOrders.findByRqId(sellRqId);
+        order = sellDisabledOrders.findByOrderId(orderId);
+        if (order != null)
+            return order;
 
         throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
     }

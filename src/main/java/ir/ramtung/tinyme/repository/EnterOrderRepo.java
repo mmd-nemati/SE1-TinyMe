@@ -1,9 +1,9 @@
 package ir.ramtung.tinyme.repository;
 
 import ir.ramtung.tinyme.domain.entity.Order;
-import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class EnterOrderRepo {
     private final HashMap<Long, Order> orderById;
@@ -14,16 +14,23 @@ public class EnterOrderRepo {
         this.ascendingStore = ascendingStore;
     }
 
-    public Order findByRqId(Long id) {
-        return orderById.get(id);
+    public Order findByRqId(long rqId) {
+        return orderById.get(rqId);
     }
 
-    public long findKeyByOrderId(Long id) {
-        for(long rqId : orderById.keySet()){
-            if(orderById.get(rqId).getOrderId() == id)
-                return(rqId);
-        }
-        return(id);
+    public Order findByOrderId(long orderId) {
+        return orderById.values().stream()
+                .filter(order -> order.getOrderId() == orderId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public long findKeyByOrderId(long id) {
+        return orderById.entrySet().stream()
+                .filter(entry -> entry.getValue().getOrderId() == id)
+                .mapToLong(Map.Entry::getKey)
+                .findFirst()
+                .orElse(id);
     }
 
     private boolean isRightPlace(Order inHashRq, Order newRq){
@@ -50,9 +57,20 @@ public class EnterOrderRepo {
 
     public void clear() { orderById.clear(); }
 
-    public void removeById(Long id) { if(exist(id))orderById.remove(id); }
+    public void removeByRqId(long rqId) {
+        if (existByRqId(rqId))
+            orderById.remove(rqId);
+    }
 
-    public boolean exist(Long id) { return(orderById.containsKey(id)); }
+    public void removeByOrderId(long orderId) {
+        orderById.entrySet().removeIf(entry -> entry.getValue().getOrderId() == orderId);
+    }
+
+    public boolean existByRqId(long rqId) { return(orderById.containsKey(rqId)); }
+
+    public boolean existByOrderId(long orderId) {
+        return orderById.values().stream().anyMatch(order -> order.getOrderId() == orderId);
+    }
 
     public int theSize(){ return( orderById.size()); }
 
