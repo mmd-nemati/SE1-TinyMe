@@ -580,7 +580,7 @@ public class StopOrderTest {
         Order o1 = new Order(6, security, Side.SELL, 75, 545, sellBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o2 = new Order(12, security, Side.BUY, 75, 580, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 140);
+                LocalDateTime.now(), OrderStatus.NEW, 0, 110);
         Trade t1 = new Trade(security, 545, 75, o1, o2);
 
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(3, "ABC", 10,
@@ -593,7 +593,7 @@ public class StopOrderTest {
 
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(5, "ABC", 12,
                 LocalDateTime.now(), Side.BUY, 75, 580, buyBroker.getBrokerId(),
-                shareholder.getShareholderId(), 0, 0, 140));
+                shareholder.getShareholderId(), 0, 0, 110));
 
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 6,
                 LocalDateTime.now(), Side.SELL, 100, 545, sellBroker.getBrokerId(),
