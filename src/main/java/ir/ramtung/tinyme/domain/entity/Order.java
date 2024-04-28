@@ -169,6 +169,7 @@ public class Order {
     public void updateFromRequest(EnterOrderRq updateOrderRq) {
         quantity = updateOrderRq.getQuantity();
         price = updateOrderRq.getPrice();
+        stopPrice = updateOrderRq.getStopPrice();
     }
 
     public long getValue() {
