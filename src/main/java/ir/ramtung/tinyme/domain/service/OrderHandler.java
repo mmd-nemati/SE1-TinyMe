@@ -10,6 +10,7 @@ import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.messaging.request.OrderEntryType;
 import ir.ramtung.tinyme.repository.*;
+import org.jgroups.util.Tuple;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedList;
@@ -62,6 +63,10 @@ public class OrderHandler {
                 eventPublisher.publish(new OrderAcceptedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
             else
                 eventPublisher.publish(new OrderUpdatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
+            if (security.isAuction()) {
+                Tuple<Integer, Integer> opening = security.calculateOpeningPrice();
+                eventPublisher.publish(new OpeningPriceEvent(security.getIsin(), opening.getVal1(), opening.getVal2()));
+            }
             if(matchResult.outcome() == MatchingOutcome.EXECUTED && enterOrderRq.isStopLimitOrderRq()) {
                 applyActivationEffects(enterOrderRq);
             }
@@ -111,11 +116,14 @@ public class OrderHandler {
         if (enterOrderRq.isStopLimitOrderRq())
             validateEnterStopOrder(enterOrderRq, errors);
         Security security = securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin());
-        if (enterOrderRq.hasMinimumExecutionQuantity() && security.isAuction())
-            errors.add(Message.CANNOT_HAVE_MINIMUM_EXEC_QUANTITY_IN_AUCTION_STATE);
+
         if (security == null)
             errors.add(Message.UNKNOWN_SECURITY_ISIN);
         else {
+            if (enterOrderRq.hasMinimumExecutionQuantity() && security.isAuction())
+                errors.add(Message.CANNOT_HAVE_MINIMUM_EXEC_QUANTITY_IN_AUCTION_STATE);
+            if (enterOrderRq.isStopLimitOrderRq() && security.isAuction())
+                errors.add(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
             if (enterOrderRq.getQuantity() % security.getLotSize() != 0)
                 errors.add(Message.QUANTITY_NOT_MULTIPLE_OF_LOT_SIZE);
             if (enterOrderRq.getPrice() % security.getTickSize() != 0)
@@ -150,6 +158,9 @@ public class OrderHandler {
             errors.add(Message.INVALID_ORDER_ID);
         if (securityRepository.findSecurityByIsin(deleteOrderRq.getSecurityIsin()) == null)
             errors.add(Message.UNKNOWN_SECURITY_ISIN);
+        else {
+
+        }
         if (!errors.isEmpty())
             throw new InvalidRequestException(errors);
     }

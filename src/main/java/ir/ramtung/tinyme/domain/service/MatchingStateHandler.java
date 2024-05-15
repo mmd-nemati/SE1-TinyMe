@@ -36,10 +36,13 @@ public class MatchingStateHandler {
     public void handleChangeMatchingState(ChangeMatchingStateRq changeMatchingStateRq) {
         Security security = securityRepository.findSecurityByIsin(changeMatchingStateRq.getSecurityIsin());
         if (security.isAuction()) {
-            eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), changeMatchingStateRq.getMatchingState()));
-            security.handleAuction(matcher);
+            MatchResult auctionResult = security.handleAuction(matcher);
             security.setState(changeMatchingStateRq.getMatchingState());
+            eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), changeMatchingStateRq.getMatchingState()));
 
+            for (Trade trade : auctionResult.trades())
+                eventPublisher.publish(new TradeEvent(trade.getSecurity().getIsin(), trade.getPrice(), trade.getQuantity(),
+                        trade.getBuy().getOrderId(), trade.getSell().getOrderId()));
         }
         else {
             eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), changeMatchingStateRq.getMatchingState()));
