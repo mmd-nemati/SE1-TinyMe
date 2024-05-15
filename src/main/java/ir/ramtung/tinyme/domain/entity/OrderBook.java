@@ -101,4 +101,18 @@ public class OrderBook {
                 .mapToInt(Order::getTotalQuantity)
                 .sum();
     }
+
+    public int totalBuyQuantityByPrice(int price) {
+        return buyQueue.stream()
+                .filter(order -> order.getPrice() >= price)
+                .mapToInt(Order::getTotalQuantity)
+                .sum();
+    }
+
+    public int totalSellQuantityByPrice(int price) {
+        return sellQueue.stream()
+                .filter(order -> order.getPrice() <= price)
+                .mapToInt(Order::getTotalQuantity)
+                .sum();
+    }
 }

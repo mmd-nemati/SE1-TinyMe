@@ -10,8 +10,10 @@ import ir.ramtung.tinyme.repository.EnterOrderRepo;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.jgroups.util.Tuple;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 @Getter
@@ -82,6 +84,8 @@ public class Security {
 
     public void deleteOrder(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
         Order order = findOrder(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
+        if (order.isStopLimitOrder() && order.getSecurity().isAuction())
+            throw new InvalidRequestException(Message.CANNOT_DELETE_STOP_ORDER_IN_AUCTION_STATE);
         if (order.getSide() == Side.BUY)
             order.getBroker().increaseCreditBy(order.getValue());
 
@@ -112,6 +116,8 @@ public class Security {
                 throw new InvalidRequestException(Message.STOP_ORDER_CANNOT_HAVE_MINIMUM_EXEC_QUANTITY);
             if (!order.isUpdatingStopOrderPossible(updateOrderRq.getOrderId(), updateOrderRq.getSecurityIsin(), updateOrderRq.getBrokerId(), updateOrderRq.getSide(), updateOrderRq.getShareholderId()))
                 throw new InvalidRequestException(Message.CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION);
+            if (order.getSecurity().isAuction())
+                throw new InvalidRequestException(Message.CANNOT_UPDATE_STOP_ORDER_IN_AUCTION_STATE);
         }
         if (updateOrderRq.getSide() == Side.SELL &&
                 !order.getShareholder().hasEnoughPositionsOn(this,
@@ -208,7 +214,29 @@ public class Security {
         throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
     }
 
+    public Tuple<Integer, Integer> calculateOpeningPrice(){
+        int min = orderBook.getBuyQueue().stream()
+                .map(Order::getPrice)
+                .min(Integer::compare)
+                .orElse(0);
+        int max = orderBook.getSellQueue().stream()
+                .map(Order::getPrice)
+                .max(Integer::compare)
+                .orElse(0);
+        Tuple<Integer, Integer> priceQuantity = new Tuple<>(min, 0);
+        for (int cur = min; cur <= max; cur++){
+            int buyQuantity = orderBook.totalBuyQuantityByPrice(cur);
+            int sellQuantity = orderBook.totalSellQuantityByPrice(cur);
+            int tempQuantity = Math.min(buyQuantity, sellQuantity);
+            if (tempQuantity > priceQuantity.getVal2())
+                priceQuantity = new Tuple<>(cur, tempQuantity);
+        }
+
+        return priceQuantity;
+    }
+
     private OrderBook getCandidateOrders(){
+        this.openingPrice = calculateOpeningPrice().getVal1();
         OrderBook candidateOrders = new OrderBook();
         for (Order order : orderBook.getBuyQueue())
             if (order.getPrice() >= this.openingPrice)
@@ -232,6 +260,7 @@ public class Security {
                 trade.getBuy().getSecurity().getOrderBook().removeByOrderId(Side.BUY, trade.getBuy().getOrderId());
             if (trade.getSell().getQuantity() == 0)
                 trade.getSell().getSecurity().getOrderBook().removeByOrderId(Side.SELL, trade.getSell().getOrderId());
+            // TODO --> handle unactivated stop prices with opening price
         }
 
         return result;
