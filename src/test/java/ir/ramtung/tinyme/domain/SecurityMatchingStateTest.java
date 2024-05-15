@@ -6,13 +6,17 @@ import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.domain.service.MatchingStateHandler;
 import ir.ramtung.tinyme.domain.service.OrderHandler;
 import ir.ramtung.tinyme.messaging.EventPublisher;
+import ir.ramtung.tinyme.messaging.TradeDTO;
+import ir.ramtung.tinyme.messaging.event.OrderExecutedEvent;
 import ir.ramtung.tinyme.messaging.event.SecurityStateChangedEvent;
 import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.request.ChangeMatchingStateRq;
 import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.messaging.request.MatchingState;
+import ir.ramtung.tinyme.repository.BrokerRepository;
 import ir.ramtung.tinyme.repository.SecurityRepository;
+import ir.ramtung.tinyme.repository.ShareholderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,15 +34,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Import(MockedJMSTestConfig.class)
 class SecurityMatchingStateTest {
-    private Security security;
-    private List<Order> orders;
 
     @Autowired
     MatchingStateHandler matchingStateHandler;
     @Autowired
+    OrderHandler orderHandler;
+    @Autowired
     EventPublisher eventPublisher;
     @Autowired
     SecurityRepository securityRepository;
+    @Autowired
+    BrokerRepository brokerRepository;
+    @Autowired
+    ShareholderRepository shareholderRepository;
+
+    private Security security;
+    private List<Order> orders;
+    private Broker sellBroker;
+    private Broker buyBroker;
+    private Shareholder shareholder;
 
     @BeforeEach
     void setup() {
@@ -46,22 +60,26 @@ class SecurityMatchingStateTest {
 
         security = Security.builder().isin("ABC").build();
         securityRepository.addSecurity(security);
-//        broker = Broker.builder().brokerId(0).credit(1_000_000L).build();
-//        shareholder = Shareholder.builder().shareholderId(0).build();
-//        shareholder.incPosition(security, 100_000);
-//        orders = Arrays.asList(
-//                new Order(1, security, BUY, 304, 15700, broker, shareholder),
-//                new Order(2, security, BUY, 43, 15500, broker, shareholder),
-//                new Order(3, security, BUY, 445, 15450, broker, shareholder),
-//                new Order(4, security, BUY, 526, 15450, broker, shareholder),
-//                new Order(5, security, BUY, 1000, 15400, broker, shareholder),
-//                new Order(6, security, Side.SELL, 350, 15800, broker, shareholder),
-//                new Order(7, security, Side.SELL, 285, 15810, broker, shareholder),
-//                new Order(8, security, Side.SELL, 800, 15810, broker, shareholder),
-//                new Order(9, security, Side.SELL, 340, 15820, broker, shareholder),
-//                new Order(10, security, Side.SELL, 65, 15820, broker, shareholder)
-//        );
-//        orders.forEach(order -> security.getOrderBook().enqueue(order));
+
+        shareholder = Shareholder.builder().build();
+        shareholder.incPosition(security, 100_000);
+        shareholderRepository.addShareholder(shareholder);
+
+        sellBroker = Broker.builder().brokerId(1).build();
+        buyBroker = Broker.builder().brokerId(2).build();
+        buyBroker.increaseCreditBy(100_000_000);
+        brokerRepository.addBroker(sellBroker);
+        brokerRepository.addBroker(buyBroker);
+    }
+
+    private void mockTradeWithPrice(int price) {
+        security.updateLastTradePrice(price);
+    }
+
+    private EnterOrderRq createNewOrderRequest(long rqId, Order order) {
+        return EnterOrderRq.createNewOrderRq(rqId, order.getSecurity().getIsin(), order.getOrderId(),
+                order.getEntryTime(), order.getSide(), order.getQuantity(), order.getPrice(), order.getBroker().getBrokerId(),
+                order.getShareholder().getShareholderId(), 0, order.getMinimumExecutionQuantity(), order.getStopPrice());
     }
 
     @Test
@@ -70,9 +88,23 @@ class SecurityMatchingStateTest {
         verify(eventPublisher).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.AUCTION));
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.CONTINUOUS));
         verify(eventPublisher).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.CONTINUOUS));
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.CONTINUOUS));
-        verify(eventPublisher).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.CONTINUOUS));
     }
 
+    @Test
+    void new_orders_shouldnt_start_matching_in_auction_state() {
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+
+        Trade t1 = new Trade(security, 170, 50, o1, o2);
+        verify(eventPublisher, never()).publish(new OrderExecutedEvent(2, 10, List.of(new TradeDTO(t1))));
+
+    }
 
 }

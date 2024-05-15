@@ -1,6 +1,7 @@
 package ir.ramtung.tinyme.domain.service;
 
 import ir.ramtung.tinyme.domain.entity.*;
+import ir.ramtung.tinyme.messaging.request.MatchingState;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedList;
@@ -8,6 +9,7 @@ import java.util.ListIterator;
 
 @Service
 public class Matcher {
+    private MatchingState securityState;
     public MatchResult match(Order newOrder) {
         int prevQuantity = newOrder.getQuantity();
         OrderBook orderBook = newOrder.getSecurity().getOrderBook();
@@ -51,6 +53,12 @@ public class Matcher {
         return MatchResult.executed(newOrder, trades);
     }
 
+    private void reopen(int openingPrice) {
+        OrderBook selectedOrders = new OrderBook();
+        OrderBook orderBook = new OrderBook();
+    }
+
+
     private void rollbackTrades(Order newOrder, LinkedList<Trade> trades) {
         if (newOrder.getSide() == Side.BUY) {
             newOrder.getBroker().increaseCreditBy(trades.stream().mapToLong(Trade::getTradedValue).sum());
@@ -86,7 +94,18 @@ public class Matcher {
     }
 
     public MatchResult execute(Order order) {
-        MatchResult result = match(order);
+        MatchResult result;
+        if (this.securityState == MatchingState.AUCTION) {
+            if (order.getQuantity() > 0) {
+                if (order.getSide() == Side.BUY)
+                    order.getBroker().decreaseCreditBy(order.getValue());
+
+                order.getSecurity().getOrderBook().enqueue(order);
+            }
+            result = MatchResult.executed(order, new LinkedList<>());
+            return result;
+        }
+        result = match(order);
 
         order.unmarkFirstEntry();
         if (result.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT || result.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC)
@@ -111,7 +130,8 @@ public class Matcher {
         return result;
     }
 
-    public MatchResult execute(Order order, int lastTradePrice){
+    public MatchResult execute(Order order, int lastTradePrice, MatchingState securityState){
+        this.securityState = securityState;
         MatchResult result;
         if(order.isStopLimitOrder()) {
             result = recognizeOutcome(order, lastTradePrice);

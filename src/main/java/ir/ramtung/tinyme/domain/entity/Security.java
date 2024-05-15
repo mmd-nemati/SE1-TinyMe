@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -64,7 +65,7 @@ public class Security {
     }
 
     public MatchResult handleEnterOrder(Order order, long reqId, Matcher matcher){
-        MatchResult result = matcher.execute(order, lastTradePrice);
+        MatchResult result = matcher.execute(order, lastTradePrice, this.state);
         handleAcceptingState(result, order, reqId);
         return (result);
     }
@@ -135,7 +136,7 @@ public class Security {
             order.markAsNew();
 
         orderBook.removeByOrderId(updateOrderRq.getSide(), updateOrderRq.getOrderId());
-        MatchResult matchResult = matcher.execute(order, lastTradePrice);
+        MatchResult matchResult = matcher.execute(order, lastTradePrice, this.state);
         if (matchResult.outcome() != MatchingOutcome.EXECUTED) {
             orderBook.enqueue(originalOrder);
             if (updateOrderRq.getSide() == Side.BUY) {

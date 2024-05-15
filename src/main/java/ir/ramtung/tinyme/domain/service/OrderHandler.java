@@ -56,6 +56,7 @@ public class OrderHandler {
             }
             if (matchResult.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC) {
                 eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), List.of(Message.ORDER_MINIMUM_EXEC_QUANTITY_NOT_SATISFY)));
+                return;
             }
             if (enterOrderRq.getRequestType() == OrderEntryType.NEW_ORDER)
                 eventPublisher.publish(new OrderAcceptedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
@@ -130,7 +131,7 @@ public class OrderHandler {
             throw new InvalidRequestException(errors);
     }
 
-    private void validateEnterStopOrder(EnterOrderRq enterOrderRq, List<String> errors){
+    private void validateEnterStopOrder(EnterOrderRq enterOrderRq, List<String> errors) throws InvalidRequestException {
         if (enterOrderRq.getStopPrice() < 0)
             errors.add(Message.STOP_PRICE_CANNOT_BE_NEGATIVE);
         if (enterOrderRq.hasMinimumExecutionQuantity())
@@ -139,6 +140,8 @@ public class OrderHandler {
             errors.add(Message.STOP_ORDER_CANNOT_BE_ICEBERG_TOO);
         if (securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin()).isAuction())
             errors.add(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
+        if (!errors.isEmpty())
+            throw new InvalidRequestException(errors);
     }
 
     private void validateDeleteOrderRq(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
