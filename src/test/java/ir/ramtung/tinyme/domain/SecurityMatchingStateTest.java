@@ -7,6 +7,7 @@ import ir.ramtung.tinyme.domain.service.MatchingStateHandler;
 import ir.ramtung.tinyme.domain.service.OrderHandler;
 import ir.ramtung.tinyme.messaging.EventPublisher;
 import ir.ramtung.tinyme.messaging.TradeDTO;
+import ir.ramtung.tinyme.messaging.event.OpeningPriceEvent;
 import ir.ramtung.tinyme.messaging.event.OrderExecutedEvent;
 import ir.ramtung.tinyme.messaging.event.SecurityStateChangedEvent;
 import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
@@ -107,4 +108,18 @@ class SecurityMatchingStateTest {
 
     }
 
+    @Test
+    void opening_price_event_in_continuous_state() {
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+
+        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 170, 50));
+    }
 }
