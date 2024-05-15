@@ -23,4 +23,6 @@ public class Message {
     public static final String STOP_PRICE_CANNOT_BE_NEGATIVE = "Stop price cannot be negative";
     public static final String CANNOT_CHANGE_STOP_PRICE_FOR_ACTIVATED = "Stop price of activated orders can't change";
     public static final String CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION = "One or more parameters cannot be changed before activation";
+    public static final String CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE = "Stop limit order cannot be added when security is in auction state";
+    public static final String CANNOT_HAVE_MINIMUM_EXEC_QUANTITY_IN_AUCTION_STATE = "Cannot have minimum execution quantity when security is in auction state";
 }

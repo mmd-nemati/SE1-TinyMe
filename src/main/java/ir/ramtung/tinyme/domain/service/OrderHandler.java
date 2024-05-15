@@ -106,9 +106,12 @@ public class OrderHandler {
             errors.add(Message.ORDER_MINIMUM_EXEC_QUANTITY_NEGATIVE);
         if (enterOrderRq.getMinimumExecutionQuantity() > enterOrderRq.getQuantity())
             errors.add(Message.ORDER_MINIMUM_EXEC_QUANTITY_BIGGER_THAN_QUANTITY);
+
         if (enterOrderRq.isStopLimitOrderRq())
             validateEnterStopOrder(enterOrderRq, errors);
         Security security = securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin());
+        if (enterOrderRq.hasMinimumExecutionQuantity() && security.isAuction())
+            errors.add(Message.CANNOT_HAVE_MINIMUM_EXEC_QUANTITY_IN_AUCTION_STATE);
         if (security == null)
             errors.add(Message.UNKNOWN_SECURITY_ISIN);
         else {
@@ -128,12 +131,14 @@ public class OrderHandler {
     }
 
     private void validateEnterStopOrder(EnterOrderRq enterOrderRq, List<String> errors){
-        if(enterOrderRq.getStopPrice() < 0)
+        if (enterOrderRq.getStopPrice() < 0)
             errors.add(Message.STOP_PRICE_CANNOT_BE_NEGATIVE);
-        if(enterOrderRq.hasMinimumExecutionQuantity())
+        if (enterOrderRq.hasMinimumExecutionQuantity())
             errors.add(Message.STOP_ORDER_CANNOT_HAVE_MINIMUM_EXEC_QUANTITY);
-        if(enterOrderRq.isIcebergOrderRq())
+        if (enterOrderRq.isIcebergOrderRq())
             errors.add(Message.STOP_ORDER_CANNOT_BE_ICEBERG_TOO);
+        if (securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin()).isAuction())
+            errors.add(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
     }
 
     private void validateDeleteOrderRq(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {

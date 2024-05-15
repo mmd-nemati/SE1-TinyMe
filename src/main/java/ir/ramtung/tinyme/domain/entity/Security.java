@@ -5,9 +5,11 @@ import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.messaging.Message;
+import ir.ramtung.tinyme.messaging.request.MatchingState;
 import ir.ramtung.tinyme.repository.EnterOrderRepo;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -37,6 +39,9 @@ public class Security {
 
     @Builder.Default
     int lastTradePrice = 0;
+    @Builder.Default
+    @Setter
+    private MatchingState state = MatchingState.CONTINUOUS;
 
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) {
         if (enterOrderRq.getSide() == Side.SELL &&
@@ -200,4 +205,6 @@ public class Security {
 
         throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
     }
+
+    public boolean isAuction() { return this.state == MatchingState.AUCTION; }
 }
