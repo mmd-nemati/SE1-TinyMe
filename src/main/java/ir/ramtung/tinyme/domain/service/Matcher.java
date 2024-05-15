@@ -53,9 +53,51 @@ public class Matcher {
         return MatchResult.executed(newOrder, trades);
     }
 
-    private void reopen(int openingPrice) {
-        OrderBook selectedOrders = new OrderBook();
-        OrderBook orderBook = new OrderBook();
+    public MatchResult auctionMatch(OrderBook candidateOrderBook, int openingPrice) {
+        MatchResult result;
+        LinkedList<Trade> trades = new LinkedList<>();
+        LinkedList<Order> buyQueue = candidateOrderBook.getBuyQueue();
+        LinkedList<Order> sellQueue = candidateOrderBook.getSellQueue();
+        for (var buyOrder : buyQueue) {
+
+            while (!sellQueue.isEmpty() && buyOrder.getQuantity() > 0) {
+                Order matchingSellOrder = sellQueue.getFirst();
+
+                Trade trade = new Trade(buyOrder.getSecurity(), openingPrice, Math.min(buyOrder.getQuantity(),
+                        matchingSellOrder.getQuantity()), buyOrder, matchingSellOrder);
+
+                // Added by me. TODO: Is there increase in path? I don't think so.
+                buyOrder.getBroker().increaseCreditBy(buyOrder.getValue());
+                trade.decreaseBuyersCredit();
+                trade.increaseSellersCredit();
+                trades.add(trade);
+
+                if (buyOrder.getQuantity() > matchingSellOrder.getQuantity()) {
+                    buyOrder.decreaseQuantity(matchingSellOrder.getQuantity());
+                    buyOrder.getBroker().decreaseCreditBy(buyOrder.getValue());
+                    if (buyOrder instanceof IcebergOrder icebergOrder) {
+                        icebergOrder.replenish();
+                    }
+                    matchingSellOrder.makeQuantityZero();
+                    // TODO:: handle if sell order is iceberg
+                } else if (buyOrder.getQuantity() == matchingSellOrder.getQuantity()) {
+                    buyOrder.makeQuantityZero();
+                    matchingSellOrder.makeQuantityZero();
+                    // TODO:: handle if sell and buy order is iceberg
+                } else { // buyOrder.getQuantity() < matchingSellOrder.getQuantity()
+                    matchingSellOrder.decreaseQuantity(buyOrder.getQuantity());
+                    if (matchingSellOrder instanceof IcebergOrder icebergOrder) {
+                        icebergOrder.replenish(); //TODO what if the matchingorder is an iceberg order?
+                    }
+                    buyOrder.makeQuantityZero();
+                    // TODO:: handle if buy order is iceberg
+
+                }
+            }
+        }
+
+        result = MatchResult.auctioned(trades);
+        return result;
     }
 
 
@@ -97,9 +139,11 @@ public class Matcher {
         MatchResult result;
         if (this.securityState == MatchingState.AUCTION) {
             if (order.getQuantity() > 0) {
-                if (order.getSide() == Side.BUY)
+                if (order.getSide() == Side.BUY) {
+                    if (!order.getBroker().hasEnoughCredit(order.getValue()))
+                        return MatchResult.notEnoughCredit();
                     order.getBroker().decreaseCreditBy(order.getValue());
-
+                }
                 order.getSecurity().getOrderBook().enqueue(order);
             }
             result = MatchResult.executed(order, new LinkedList<>());

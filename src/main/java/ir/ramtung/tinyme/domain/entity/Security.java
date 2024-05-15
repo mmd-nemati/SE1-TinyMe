@@ -43,7 +43,8 @@ public class Security {
     @Builder.Default
     @Setter
     private MatchingState state = MatchingState.CONTINUOUS;
-
+    @Builder.Default
+    private int openingPrice = 0;
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) {
         if (enterOrderRq.getSide() == Side.SELL &&
                 !shareholder.hasEnoughPositionsOn(this,
@@ -205,6 +206,35 @@ public class Security {
             return order;
 
         throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
+    }
+
+    private OrderBook getCandidateOrders(){
+        OrderBook candidateOrders = new OrderBook();
+        for (Order order : orderBook.getBuyQueue())
+            if (order.getPrice() >= this.openingPrice)
+                candidateOrders.enqueue(order);
+
+        for (Order order : orderBook.getSellQueue())
+            if (order.getPrice() >= this.openingPrice)
+                candidateOrders.enqueue(order);
+
+        return candidateOrders;
+    }
+
+    public MatchResult handleAuction(Matcher matcher) {
+        OrderBook candidateOrders = getCandidateOrders();
+        if (candidateOrders.getBuyQueue().isEmpty() || candidateOrders.getSellQueue().isEmpty())
+            return MatchResult.auctioned(new ArrayList<Trade>()); // TODO
+        MatchResult result = matcher.auctionMatch(getCandidateOrders(), this.openingPrice);
+
+        for (Trade trade : result.trades()) {
+            if (trade.getBuy().getQuantity() == 0)
+                trade.getBuy().getSecurity().getOrderBook().removeByOrderId(Side.BUY, trade.getBuy().getOrderId());
+            if (trade.getSell().getQuantity() == 0)
+                trade.getSell().getSecurity().getOrderBook().removeByOrderId(Side.SELL, trade.getSell().getOrderId());
+        }
+
+        return result;
     }
 
     public boolean isAuction() { return this.state == MatchingState.AUCTION; }

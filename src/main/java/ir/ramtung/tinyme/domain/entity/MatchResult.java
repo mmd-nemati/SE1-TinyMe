@@ -28,6 +28,9 @@ public final class MatchResult {
     public static MatchResult notSatisfyMinExec() {
         return new MatchResult(MatchingOutcome.NOT_SATISFY_MIN_EXEC, null, new LinkedList<>());
     }
+    public static MatchResult auctioned(List<Trade> trades) {
+        return new MatchResult(MatchingOutcome.AUCTIONED, null, new LinkedList<>(trades));
+    }
     private MatchResult(MatchingOutcome outcome, Order remainder, LinkedList<Trade> trades) {
         this.outcome = outcome;
         this.remainder = remainder;

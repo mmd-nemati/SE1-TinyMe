@@ -37,7 +37,7 @@ public class MatchingStateHandler {
         Security security = securityRepository.findSecurityByIsin(changeMatchingStateRq.getSecurityIsin());
         if (security.isAuction()) {
             eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), changeMatchingStateRq.getMatchingState()));
-            // TODO -> opening
+            security.handleAuction(matcher);
             security.setState(changeMatchingStateRq.getMatchingState());
 
         }
