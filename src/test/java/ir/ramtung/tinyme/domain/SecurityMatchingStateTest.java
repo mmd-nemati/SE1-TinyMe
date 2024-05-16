@@ -6,9 +6,11 @@ import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.domain.service.MatchingStateHandler;
 import ir.ramtung.tinyme.domain.service.OrderHandler;
 import ir.ramtung.tinyme.messaging.EventPublisher;
+import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.messaging.TradeDTO;
 import ir.ramtung.tinyme.messaging.event.OpeningPriceEvent;
 import ir.ramtung.tinyme.messaging.event.OrderExecutedEvent;
+import ir.ramtung.tinyme.messaging.event.OrderRejectedEvent;
 import ir.ramtung.tinyme.messaging.event.SecurityStateChangedEvent;
 import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.request.ChangeMatchingStateRq;
@@ -92,6 +94,43 @@ class SecurityMatchingStateTest {
     }
 
     @Test
+    void cant_make_new_stop_order_in_auction_state() {
+        mockTradeWithPrice(100);
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 50);
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+        verify(eventPublisher).publish(new OrderRejectedEvent(1, 6, List.of(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE)));
+    }
+
+    @Test
+    void cant_update_unactivated_stop_order_in_auction_state() {
+        mockTradeWithPrice(100);
+        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 120);
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, security.getIsin(), 6,
+                LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 120));
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 6, List.of(Message.CANNOT_UPDATE_STOP_ORDER_IN_AUCTION_STATE)));
+    }
+
+    @Test
+    void cant_make_new_order_with_min_exec_in_auction_state() {
+        mockTradeWithPrice(100);
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 50, 0);
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+        verify(eventPublisher).publish(new OrderRejectedEvent(1, 6, List.of(Message.CANNOT_HAVE_MINIMUM_EXEC_QUANTITY_IN_AUCTION_STATE)));
+    }
+
+    @Test
     void new_orders_shouldnt_start_matching_in_auction_state() {
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
         Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
@@ -122,4 +161,24 @@ class SecurityMatchingStateTest {
 
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 170, 50));
     }
+
+//    @Test
+//    void orders_start_trading_after_virtual_change() {
+//        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+//        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+//                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+//        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
+//                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+//
+//
+//        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+//        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+//        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 170, 50));
+//
+//        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+//
+//        Trade t1 = new Trade(security, 170, 50, o1, o2);
+//        verify(eventPublisher).publish(new OrderExecutedEvent(2, 10, List.of(new TradeDTO(t1))));
+//
+//    }
 }
