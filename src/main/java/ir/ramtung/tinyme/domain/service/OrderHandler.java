@@ -19,11 +19,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrderHandler extends Handler{
-    SecurityRepository securityRepository;
-    BrokerRepository brokerRepository;
-    ShareholderRepository shareholderRepository;
-    EventPublisher eventPublisher;
-    Matcher matcher;
 
     public OrderHandler(SecurityRepository securityRepository, BrokerRepository brokerRepository, ShareholderRepository shareholderRepository, EventPublisher eventPublisher, Matcher matcher) {
         super(securityRepository, brokerRepository, shareholderRepository, eventPublisher, matcher);
@@ -161,59 +156,6 @@ public class OrderHandler extends Handler{
         }
         if (!errors.isEmpty())
             throw new InvalidRequestException(errors);
-    }
-
-    private void executeEnabledOrders(EnterOrderRq rq){
-        execBuyAndSell(rq, Side.BUY);
-        execBuyAndSell(rq, Side.SELL);
-    }
-
-    private boolean isEnabledOver(Side side, Security security){
-        return(
-                (side == Side.BUY && (security.getBuyEnabledOrders().theSize() == 0))
-                ||
-                (side == Side.SELL && (security.getSellEnabledOrders().theSize() == 0))
-                );
-    }
-
-    private void executeTheEnabled(Order order, long reqId, Side side){
-        Security security = order.getSecurity();
-
-        security.removeEnabledOrder(reqId, side);
-        eventPublisher.publish(new OrderActivatedEvent(reqId, order.getOrderId()));
-        order.setStopPriceZero();
-
-        MatchResult matchResult = security.handleEnterOrder(order, reqId, matcher);
-        if (!matchResult.trades().isEmpty())
-            applyExecutionUpdates(security, order.getOrderId(), reqId, matchResult);
-    }
-
-    private void execBuyAndSell(EnterOrderRq enterRq, Side side){
-        Security security = securityRepository.findSecurityByIsin(enterRq.getSecurityIsin());
-        EnterOrderRepo orders;
-        if(side == Side.BUY)
-            orders = security.getBuyEnabledOrders().makeCopy();
-        else
-            orders = security.getSellEnabledOrders().makeCopy();
-
-        if(orders != null) {
-            for (long reqId : orders.allOrderKeysSortedByStopPrice())
-                executeTheEnabled(orders.findByRqId(reqId), reqId, side);
-        }
-
-        if(isEnabledOver(side, security))
-                return;
-
-        execBuyAndSell(enterRq, side);
-    }
-
-    private void applyExecutionUpdates(Security security, long orderId, long reqId, MatchResult matchResult){
-
-        eventPublisher.publish(new OrderExecutedEvent(reqId, orderId,
-                matchResult.trades().stream().map(TradeDTO::new).collect(Collectors.toList())));
-        
-        security.updateLastTradePrice(matchResult.trades().getLast().getPrice());
-        security.handleDisabledOrders();
     }
 
 }
