@@ -218,6 +218,11 @@ public class Security {
         throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
     }
 
+    public int getQuantityBasedOnPrice(int price) {
+        int buyQuantity = orderBook.totalBuyQuantityByPrice(price);
+        int sellQuantity = orderBook.totalSellQuantityByPrice(price);
+         return Math.min(buyQuantity, sellQuantity);
+    }
     public Tuple<Integer, Integer> calculateOpeningPrice(){
         Tuple<Integer, Integer> priceQuantity = new Tuple<>(0, 0);
         int min = orderBook.getBuyQueue().stream()
@@ -228,12 +233,11 @@ public class Security {
                 .map(Order::getPrice)
                 .max(Integer::compare)
                 .orElse(0);
-
+        boolean flag = false;
         int closestPrice = Integer.MAX_VALUE;
         for (int cur = min; cur <= max; cur++) {
-            int buyQuantity = orderBook.totalBuyQuantityByPrice(cur);
-            int sellQuantity = orderBook.totalSellQuantityByPrice(cur);
-            int tempQuantity = Math.min(buyQuantity, sellQuantity);
+            flag = true;
+            int tempQuantity = getQuantityBasedOnPrice(cur);
 
             if (tempQuantity > priceQuantity.getVal2())
                 priceQuantity = new Tuple<>(cur, tempQuantity);
@@ -244,6 +248,8 @@ public class Security {
                     priceQuantity = new Tuple<>(cur, tempQuantity);
                 }
         }
+        if (!flag)
+            priceQuantity = new Tuple<>(this.lastTradePrice, getQuantityBasedOnPrice(this.lastTradePrice));
 
         return priceQuantity;
     }
@@ -267,14 +273,13 @@ public class Security {
         if (candidateOrders.getBuyQueue().isEmpty() || candidateOrders.getSellQueue().isEmpty())
             return MatchResult.auctioned(new ArrayList<Trade>()); // TODO
         MatchResult result = matcher.auctionMatch(getCandidateOrders(), this.openingPrice);
+        for (Order order : candidateOrders.getBuyQueue())
+            if (order.getQuantity() == 0)
+                this.orderBook.removeByOrderId(Side.BUY, order.getOrderId());
+        for (Order order : candidateOrders.getSellQueue())
+            if (order.getQuantity() == 0)
+                this.orderBook.removeByOrderId(Side.SELL, order.getOrderId());
 
-        for (Trade trade : result.trades()) {
-            if (trade.getBuy().getQuantity() == 0)
-                trade.getBuy().getSecurity().getOrderBook().removeByOrderId(Side.BUY, trade.getBuy().getOrderId());
-            if (trade.getSell().getQuantity() == 0)
-                trade.getSell().getSecurity().getOrderBook().removeByOrderId(Side.SELL, trade.getSell().getOrderId());
-            // TODO --> handle unactivated stop prices with opening price
-        }
         if (!result.trades().isEmpty()) {
             this.lastTradePrice = result.trades().getLast().getPrice();
             handleDisabledOrders();
