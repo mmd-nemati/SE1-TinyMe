@@ -64,7 +64,7 @@ public class Security {
                     enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW,
                     enterOrderRq.getMinimumExecutionQuantity());
 
-        if (order.isStopLimitOrder() && order.getSecurity().isAuction())
+        if (order.isStopLimitOrder() && this.isAuction())
             throw new InvalidRequestException(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
 
         return handleEnterOrder(order, enterOrderRq.getRequestId(), matcher);
@@ -88,7 +88,7 @@ public class Security {
 
     public void deleteOrder(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
         Order order = findOrder(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
-        if (order.isStopLimitOrder() && order.getSecurity().isAuction())
+        if (order.isStopLimitOrder() && this.isAuction())
             throw new InvalidRequestException(Message.CANNOT_DELETE_STOP_ORDER_IN_AUCTION_STATE);
         if (order.getSide() == Side.BUY)
             order.getBroker().increaseCreditBy(order.getValue());
@@ -229,24 +229,21 @@ public class Security {
                 .max(Integer::compare)
                 .orElse(0);
 
-        int closestPrice = Integer.MAX_VALUE; // Initialize closest price to a large value
+        int closestPrice = Integer.MAX_VALUE;
         for (int cur = min; cur <= max; cur++) {
             int buyQuantity = orderBook.totalBuyQuantityByPrice(cur);
             int sellQuantity = orderBook.totalSellQuantityByPrice(cur);
             int tempQuantity = Math.min(buyQuantity, sellQuantity);
 
-            // Check if tempQuantity is greater than the previous max
-            if (tempQuantity > priceQuantity.getVal2()) {
+            if (tempQuantity > priceQuantity.getVal2())
                 priceQuantity = new Tuple<>(cur, tempQuantity);
-            } else if (tempQuantity == priceQuantity.getVal2()) { // If tempQuantity is equal to previous max
-                // Check if the current price is closer to lastTradedPrice than the previous closest price
+
+            else if (tempQuantity == priceQuantity.getVal2())
                 if (Math.abs(cur - this.lastTradePrice) < Math.abs(closestPrice - this.lastTradePrice)) {
-                    closestPrice = cur; // Update closest price
+                    closestPrice = cur;
                     priceQuantity = new Tuple<>(cur, tempQuantity);
                 }
-            }
         }
-
 
         return priceQuantity;
     }
