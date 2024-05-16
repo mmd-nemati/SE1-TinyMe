@@ -32,13 +32,12 @@ abstract class Handler {
             this.matcher = matcher;
         }
 
-    void executeEnabledOrders(EnterOrderRq rq){
-        execBuyAndSell(rq, Side.BUY);
-        execBuyAndSell(rq, Side.SELL);
+    void executeEnabledOrders(Security security){
+        execBuyAndSell(security, Side.BUY);
+        execBuyAndSell(security, Side.SELL);
     }
 
-    void execBuyAndSell(EnterOrderRq enterRq, Side side){
-        Security security = securityRepository.findSecurityByIsin(enterRq.getSecurityIsin());
+    void execBuyAndSell(Security security, Side side){
         EnterOrderRepo orders;
         if(side == Side.BUY)
             orders = security.getBuyEnabledOrders().makeCopy();

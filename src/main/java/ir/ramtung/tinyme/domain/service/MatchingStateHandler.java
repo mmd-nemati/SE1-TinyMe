@@ -33,6 +33,8 @@ public class MatchingStateHandler extends Handler{
         Security security = securityRepository.findSecurityByIsin(changeMatchingStateRq.getSecurityIsin());
         if (security.isAuction()) {
             MatchResult auctionResult = security.handleAuction(matcher);
+            if (!auctionResult.trades().isEmpty())
+                executeEnabledOrders(security);
             security.setState(changeMatchingStateRq.getMatchingState());
             eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), changeMatchingStateRq.getMatchingState()));
 
