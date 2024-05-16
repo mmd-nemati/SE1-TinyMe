@@ -86,8 +86,12 @@ class SecurityMatchingStateTest {
     void verify_change_state_event() {
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
         verify(eventPublisher).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.AUCTION));
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        verify(eventPublisher, times(2)).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.AUCTION));
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.CONTINUOUS));
         verify(eventPublisher).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.CONTINUOUS));
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.CONTINUOUS));
+        verify(eventPublisher, times(2)).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.CONTINUOUS));
     }
 
     @Test
@@ -154,61 +158,69 @@ class SecurityMatchingStateTest {
 
         Trade t1 = new Trade(security, 170, 50, o1, o2);
         verify(eventPublisher, never()).publish(new OrderExecutedEvent(2, 10, List.of(new TradeDTO(t1))));
-
     }
 
     @Test
     void correct_opening_price_event_with_new_orders() {
+        mockTradeWithPrice(170);
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+        Order o1 = new Order(6, security, Side.BUY, 50, 180, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-
+        Order o3 = new Order(7, security, Side.BUY, 70, 180, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o4 = new Order(7, security, Side.SELL, 120, 180, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
-        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 0, 0));
+        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 170, 0));
 
         orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 170, 50));
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
+        verify(eventPublisher, times(2)).publish(new OpeningPriceEvent(security.getIsin(), 170, 50));
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
+        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 180, 120));
     }
 
+
     @Test
-    void correct_opening_price_event_with_new_orders2() {
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
-        Order o1 = new Order(6, security, Side.BUY, 304, 15700, buyBroker, shareholder,
+    void activated_orders_in_auction_make_trade_in_next_round_after_update() {
+        mockTradeWithPrice(200);
+        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 300);
+        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 100);
+        Order o3 = new Order(7, security, Side.BUY, 70, 400, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(7, security, Side.BUY, 1000, 15400, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o3 = new Order(10, security, Side.SELL, 350, 15700, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o4 = new Order(11, security, Side.SELL, 65, 15820, sellBroker, shareholder,
+        Order o4 = new Order(11, security, Side.SELL, 100, 380, sellBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+        verify(eventPublisher, never()).publish(new OrderActivatedEvent(1, 6));
+        verify(eventPublisher, never()).publish(new OrderActivatedEvent(2, 10));
+
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+
         orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
         orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
-        verify(eventPublisher, times(2)).publish(new OpeningPriceEvent(security.getIsin(), 15700, 304));
-    }
-
-
-    @Test
-    void orders_start_trading_after_virtual_change() {
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 380, 70, 7, 11));
+        verify(eventPublisher).publish(new OrderActivatedEvent(1, 6));
 
-
-        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
-        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
-        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 170, 50));
+        orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(5, security.getIsin(), 6,
+                LocalDateTime.now(), Side.BUY, 100, 390, buyBroker.getBrokerId(),
+                shareholder.getShareholderId(), 0, 0, 0));
+        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 380, 30));
 
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
-
-        Trade t1 = new Trade(security, 170, 50, o1, o2);
-        verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 170, 50, 6, 10));
+        verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 380, 30, 6, 11));
     }
+
+//    @Test
+//    void
 }
