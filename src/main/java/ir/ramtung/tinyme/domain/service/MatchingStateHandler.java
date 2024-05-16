@@ -19,11 +19,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class MatchingStateHandler extends Handler{
-    SecurityRepository securityRepository;
-    BrokerRepository brokerRepository;
-    ShareholderRepository shareholderRepository;
-    EventPublisher eventPublisher;
-    Matcher matcher;
 
     public MatchingStateHandler(SecurityRepository securityRepository, BrokerRepository brokerRepository, ShareholderRepository shareholderRepository, EventPublisher eventPublisher, Matcher matcher) {
         super(securityRepository, brokerRepository, shareholderRepository, eventPublisher, matcher);
