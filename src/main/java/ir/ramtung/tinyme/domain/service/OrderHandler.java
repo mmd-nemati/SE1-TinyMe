@@ -77,7 +77,7 @@ public class OrderHandler extends Handler{
     private void applyExecutionEffects(Security security, EnterOrderRq rq, MatchResult matchResult){
         rq.setStopPriceZero();
         applyExecutionUpdates(security, rq.getOrderId(), rq.getRequestId(),  matchResult);
-        executeEnabledOrders(rq);
+        executeEnabledOrders(security);
     }
 
     public void handleDeleteOrder(DeleteOrderRq deleteOrderRq) {

@@ -52,7 +52,7 @@ abstract class Handler {
         if(isEnabledOver(side, security))
             return;
 
-        execBuyAndSell(enterRq, side);
+        execBuyAndSell(security, side);
     }
 
     void executeTheEnabled(Order order, long reqId, Side side){
