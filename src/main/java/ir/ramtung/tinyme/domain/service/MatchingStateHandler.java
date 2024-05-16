@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class MatchingStateHandler {
+public class MatchingStateHandler extends Handler{
     SecurityRepository securityRepository;
     BrokerRepository brokerRepository;
     ShareholderRepository shareholderRepository;
@@ -26,11 +26,7 @@ public class MatchingStateHandler {
     Matcher matcher;
 
     public MatchingStateHandler(SecurityRepository securityRepository, BrokerRepository brokerRepository, ShareholderRepository shareholderRepository, EventPublisher eventPublisher, Matcher matcher) {
-        this.securityRepository = securityRepository;
-        this.brokerRepository = brokerRepository;
-        this.shareholderRepository = shareholderRepository;
-        this.eventPublisher = eventPublisher;
-        this.matcher = matcher;
+        super(securityRepository, brokerRepository, shareholderRepository, eventPublisher, matcher);
     }
 
     public void handleChangeMatchingState(ChangeMatchingStateRq changeMatchingStateRq) {

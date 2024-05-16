@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class OrderHandler {
+public class OrderHandler extends Handler{
     SecurityRepository securityRepository;
     BrokerRepository brokerRepository;
     ShareholderRepository shareholderRepository;
@@ -26,11 +26,7 @@ public class OrderHandler {
     Matcher matcher;
 
     public OrderHandler(SecurityRepository securityRepository, BrokerRepository brokerRepository, ShareholderRepository shareholderRepository, EventPublisher eventPublisher, Matcher matcher) {
-        this.securityRepository = securityRepository;
-        this.brokerRepository = brokerRepository;
-        this.shareholderRepository = shareholderRepository;
-        this.eventPublisher = eventPublisher;
-        this.matcher = matcher;
+        super(securityRepository, brokerRepository, shareholderRepository, eventPublisher, matcher);
     }
 
     public void handleEnterOrder(EnterOrderRq enterOrderRq) {
