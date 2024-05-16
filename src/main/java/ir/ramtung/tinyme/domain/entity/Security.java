@@ -278,8 +278,10 @@ public class Security {
                 trade.getSell().getSecurity().getOrderBook().removeByOrderId(Side.SELL, trade.getSell().getOrderId());
             // TODO --> handle unactivated stop prices with opening price
         }
-        if (!result.trades().isEmpty())
+        if (!result.trades().isEmpty()) {
             this.lastTradePrice = result.trades().getLast().getPrice();
+            handleDisabledOrders();
+        }
 
         return result;
     }
