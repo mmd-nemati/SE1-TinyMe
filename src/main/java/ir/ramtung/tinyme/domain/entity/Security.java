@@ -228,11 +228,11 @@ public class Security {
         int min = orderBook.getBuyQueue().stream()
                 .map(Order::getPrice)
                 .min(Integer::compare)
-                .orElse(0);
+                .orElse(0);// TODO-> These streams are not needed as the orders are stored in sorted based on the price
         int max = orderBook.getSellQueue().stream()
                 .map(Order::getPrice)
                 .max(Integer::compare)
-                .orElse(0);
+                .orElse(0);// TODO-> These streams are not needed as the orders are stored in sorted based on the price
         boolean flag = false;
         int closestPrice = Integer.MAX_VALUE;
         for (int cur = min; cur <= max; cur++) {
@@ -279,6 +279,9 @@ public class Security {
         for (Order order : candidateOrders.getSellQueue())
             if (order.getQuantity() == 0)
                 this.orderBook.removeByOrderId(Side.SELL, order.getOrderId());
+        for (Trade trade : result.trades())
+            if (trade.getPrice() < trade.getBuy().getPrice())
+                trade.getBuy().getBroker().increaseCreditBy((long) (trade.getBuy().getPrice() - trade.getPrice()) * trade.getQuantity());
 
         if (!result.trades().isEmpty()) {
             this.lastTradePrice = result.trades().getLast().getPrice();

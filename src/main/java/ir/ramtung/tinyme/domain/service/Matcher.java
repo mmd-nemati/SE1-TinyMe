@@ -25,7 +25,7 @@ public class Matcher {
                 break;
 
             Trade trade = new Trade(newOrder.getSecurity(), matchingOrder.getPrice(), Math.min(newOrder.getQuantity(), matchingOrder.getQuantity()), newOrder, matchingOrder);
-            if (newOrder.getSide() == Side.BUY) {
+            if (newOrder.getSide() == Side.BUY && this.securityState == MatchingState.CONTINUOUS) {
                 if (trade.buyerHasEnoughCredit())
                     trade.decreaseBuyersCredit();
                 else {
@@ -64,7 +64,9 @@ public class Matcher {
         LinkedList<Order> sellQueue = candidateOrderBook.getSellQueue();
         this.orderBook = candidateOrderBook;
         for (var buyOrder : buyQueue) {
-            trades.addAll(match(buyOrder).trades());
+//            trades.addAll(match(buyOrder).trades());
+            var a = execute(buyOrder);
+            trades.addAll(a.trades());
         }
 //        for (var buyOrder : buyQueue) {
 //
@@ -145,18 +147,18 @@ public class Matcher {
 
     public MatchResult execute(Order order) {
         MatchResult result;
-        if (this.securityState == MatchingState.AUCTION) {
-            if (order.getQuantity() > 0) {
-                if (order.getSide() == Side.BUY) {
-                    if (!order.getBroker().hasEnoughCredit(order.getValue()))
-                        return MatchResult.notEnoughCredit();
-                    order.getBroker().decreaseCreditBy(order.getValue());
-                }
-                order.getSecurity().getOrderBook().enqueue(order);
-            }
-            result = MatchResult.executed(order, new LinkedList<>());
-            return result;
-        }
+//        if (this.securityState == MatchingState.AUCTION) {
+//            if (order.getQuantity() > 0) {
+//                if (order.getSide() == Side.BUY) {
+//                    if (!order.getBroker().hasEnoughCredit(order.getValue()))
+//                        return MatchResult.notEnoughCredit();
+//                    order.getBroker().decreaseCreditBy(order.getValue());
+//                }
+//                order.getSecurity().getOrderBook().enqueue(order);
+//            }
+//            result = MatchResult.executed(order, new LinkedList<>());
+//            return result;
+//        }
         result = match(order);
 
         order.unmarkFirstEntry();
@@ -164,7 +166,7 @@ public class Matcher {
             return result;
 
         if (result.remainder().getQuantity() > 0) {
-            if (order.getSide() == Side.BUY) {
+            if (order.getSide() == Side.BUY && this.securityState == MatchingState.CONTINUOUS) {
                 if (!order.getBroker().hasEnoughCredit(order.getValue())) {
                     rollbackTrades(order, result.trades());
                     return MatchResult.notEnoughCredit();
@@ -183,8 +185,21 @@ public class Matcher {
     }
 
     public MatchResult execute(Order order, int lastTradePrice, MatchingState securityState){
-        this.securityState = securityState;
         MatchResult result;
+        this.securityState = securityState;
+        if (securityState == MatchingState.AUCTION) {
+            if (order.getQuantity() > 0) {
+                if (order.getSide() == Side.BUY) {
+                    if (!order.getBroker().hasEnoughCredit(order.getValue()))
+                        return MatchResult.notEnoughCredit();
+                    order.getBroker().decreaseCreditBy(order.getValue());
+                }
+                order.getSecurity().getOrderBook().enqueue(order);
+            }
+            result = MatchResult.executed(order, new LinkedList<>());
+            return result;
+        }
+
         if(order.isStopLimitOrder()) {
             result = recognizeOutcome(order, lastTradePrice);
             if(result.outcome() != MatchingOutcome.ACTIVATED)
