@@ -219,6 +219,7 @@ public class Security {
     }
 
     public Tuple<Integer, Integer> calculateOpeningPrice(){
+        Tuple<Integer, Integer> priceQuantity = new Tuple<>(0, 0);
         int min = orderBook.getBuyQueue().stream()
                 .map(Order::getPrice)
                 .min(Integer::compare)
@@ -227,14 +228,25 @@ public class Security {
                 .map(Order::getPrice)
                 .max(Integer::compare)
                 .orElse(0);
-        Tuple<Integer, Integer> priceQuantity = new Tuple<>(min, 0);
-        for (int cur = min; cur <= max; cur++){
+
+        int closestPrice = Integer.MAX_VALUE; // Initialize closest price to a large value
+        for (int cur = min; cur <= max; cur++) {
             int buyQuantity = orderBook.totalBuyQuantityByPrice(cur);
             int sellQuantity = orderBook.totalSellQuantityByPrice(cur);
             int tempQuantity = Math.min(buyQuantity, sellQuantity);
-            if (tempQuantity > priceQuantity.getVal2())
+
+            // Check if tempQuantity is greater than the previous max
+            if (tempQuantity > priceQuantity.getVal2()) {
                 priceQuantity = new Tuple<>(cur, tempQuantity);
+            } else if (tempQuantity == priceQuantity.getVal2()) { // If tempQuantity is equal to previous max
+                // Check if the current price is closer to lastTradedPrice than the previous closest price
+                if (Math.abs(cur - this.lastTradePrice) < Math.abs(closestPrice - this.lastTradePrice)) {
+                    closestPrice = cur; // Update closest price
+                    priceQuantity = new Tuple<>(cur, tempQuantity);
+                }
+            }
         }
+
 
         return priceQuantity;
     }
@@ -266,6 +278,8 @@ public class Security {
                 trade.getSell().getSecurity().getOrderBook().removeByOrderId(Side.SELL, trade.getSell().getOrderId());
             // TODO --> handle unactivated stop prices with opening price
         }
+        if (!result.trades().isEmpty())
+            this.lastTradePrice = result.trades().getLast().getPrice();
 
         return result;
     }

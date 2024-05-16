@@ -120,6 +120,19 @@ class SecurityMatchingStateTest {
     }
 
     @Test
+    void cant_delete_unactivated_stop_order_in_auction_state() {
+        mockTradeWithPrice(100);
+        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 120);
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+
+        orderHandler.handleDeleteOrder(new DeleteOrderRq(2, security.getIsin(), Side.BUY, 6));
+        verify(eventPublisher).publish(new OrderRejectedEvent(2, 6, List.of(Message.CANNOT_DELETE_STOP_ORDER_IN_AUCTION_STATE)));
+    }
+
+    @Test
     void cant_make_new_order_with_min_exec_in_auction_state() {
         mockTradeWithPrice(100);
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
@@ -148,7 +161,7 @@ class SecurityMatchingStateTest {
     }
 
     @Test
-    void opening_price_event_in_continuous_state() {
+    void correct_opening_price_event_with_new_orders() {
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
         Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
@@ -157,10 +170,31 @@ class SecurityMatchingStateTest {
 
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
-        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 0, 0));
 
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 170, 50));
     }
+
+    @Test
+    void correct_opening_price_event_with_new_orders2() {
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        Order o1 = new Order(6, security, Side.BUY, 304, 15700, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o2 = new Order(7, security, Side.BUY, 1000, 15400, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o3 = new Order(10, security, Side.SELL, 350, 15700, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o4 = new Order(11, security, Side.SELL, 65, 15820, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+        orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
+        orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
+        verify(eventPublisher, times(2)).publish(new OpeningPriceEvent(security.getIsin(), 15700, 304));
+    }
+
 
 //    @Test
 //    void orders_start_trading_after_virtual_change() {
