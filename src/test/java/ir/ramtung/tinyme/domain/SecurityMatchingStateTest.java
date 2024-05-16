@@ -221,6 +221,27 @@ class SecurityMatchingStateTest {
         verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 380, 30, 6, 11));
     }
 
-//    @Test
-//    void
+    @Test
+    void correct_broker_credit_of_orders_in_auction_state() {
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+
+        verify(eventPublisher).publish(new OrderAcceptedEvent(1, 6));
+        verify(eventPublisher).publish(new OrderAcceptedEvent(2, 10));
+
+        assertThat(buyBroker.getCredit()).isEqualTo(100_000_000 - 100 * 170);
+        assertThat(sellBroker.getCredit()).isZero();
+
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        assertThat(buyBroker.getCredit()).isEqualTo(100_000_000 - 100 * 170);
+        assertThat(sellBroker.getCredit()).isEqualTo( 50 * 170);
+    }
+
+    // TODO: تست برای زیاد شدن کردیت اختلاف قیمت حراج با قیمت اردر (line 282-284 security, خط اخر بازگشایی تو پدف)
 }
