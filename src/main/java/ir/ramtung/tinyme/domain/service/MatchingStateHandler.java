@@ -2,20 +2,10 @@ package ir.ramtung.tinyme.domain.service;
 
 import ir.ramtung.tinyme.domain.entity.*;
 import ir.ramtung.tinyme.messaging.EventPublisher;
-import ir.ramtung.tinyme.messaging.Message;
-import ir.ramtung.tinyme.messaging.TradeDTO;
 import ir.ramtung.tinyme.messaging.event.*;
-import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.request.*;
-import ir.ramtung.tinyme.repository.BrokerRepository;
-import ir.ramtung.tinyme.repository.EnterOrderRepo;
-import ir.ramtung.tinyme.repository.SecurityRepository;
-import ir.ramtung.tinyme.repository.ShareholderRepository;
+import ir.ramtung.tinyme.repository.*;
 import org.springframework.stereotype.Service;
-
-import java.util.LinkedList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class MatchingStateHandler extends Handler{
@@ -36,6 +26,7 @@ public class MatchingStateHandler extends Handler{
             for (Trade trade : auctionResult.trades())
                 eventPublisher.publish(new TradeEvent(trade.getSecurity().getIsin(), trade.getPrice(), trade.getQuantity(),
                         trade.getBuy().getOrderId(), trade.getSell().getOrderId()));
+
         }
         else {
             eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), changeMatchingStateRq.getMatchingState()));

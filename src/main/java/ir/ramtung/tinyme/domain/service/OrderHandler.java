@@ -4,7 +4,6 @@ import ir.ramtung.tinyme.domain.entity.*;
 import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.EventPublisher;
-import ir.ramtung.tinyme.messaging.TradeDTO;
 import ir.ramtung.tinyme.messaging.event.*;
 import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class OrderHandler extends Handler{
@@ -151,9 +149,6 @@ public class OrderHandler extends Handler{
             errors.add(Message.INVALID_ORDER_ID);
         if (securityRepository.findSecurityByIsin(deleteOrderRq.getSecurityIsin()) == null)
             errors.add(Message.UNKNOWN_SECURITY_ISIN);
-        else {
-
-        }
         if (!errors.isEmpty())
             throw new InvalidRequestException(errors);
     }
