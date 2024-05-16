@@ -122,8 +122,10 @@ public class OrderHandler {
         else {
             if (enterOrderRq.hasMinimumExecutionQuantity() && security.isAuction())
                 errors.add(Message.CANNOT_HAVE_MINIMUM_EXEC_QUANTITY_IN_AUCTION_STATE);
-            if (enterOrderRq.isStopLimitOrderRq() && security.isAuction())
-                errors.add(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
+//            if (enterOrderRq.isStopLimitOrderRq() && security.isAuction() && enterOrderRq.getRequestType() == OrderEntryType.NEW_ORDER)
+//                errors.add(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
+//            if (enterOrderRq.isStopLimitOrderRq() && security.isAuction() && enterOrderRq.getRequestType() == OrderEntryType.UPDATE_ORDER)
+//                errors.add(Message.CANNOT_UPDATE_STOP_ORDER_IN_AUCTION_STATE); // TODO: Here or in security
             if (enterOrderRq.getQuantity() % security.getLotSize() != 0)
                 errors.add(Message.QUANTITY_NOT_MULTIPLE_OF_LOT_SIZE);
             if (enterOrderRq.getPrice() % security.getTickSize() != 0)
@@ -146,8 +148,8 @@ public class OrderHandler {
             errors.add(Message.STOP_ORDER_CANNOT_HAVE_MINIMUM_EXEC_QUANTITY);
         if (enterOrderRq.isIcebergOrderRq())
             errors.add(Message.STOP_ORDER_CANNOT_BE_ICEBERG_TOO);
-        if (securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin()).isAuction())
-            errors.add(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
+//        if (securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin()).isAuction())
+//            errors.add(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
         if (!errors.isEmpty())
             throw new InvalidRequestException(errors);
     }

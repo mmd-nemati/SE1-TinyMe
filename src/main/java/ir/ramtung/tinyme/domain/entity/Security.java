@@ -47,7 +47,7 @@ public class Security {
     private MatchingState state = MatchingState.CONTINUOUS;
     @Builder.Default
     private int openingPrice = 0;
-    public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) {
+    public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) throws InvalidRequestException {
         if (enterOrderRq.getSide() == Side.SELL &&
                 !shareholder.hasEnoughPositionsOn(this,
                 orderBook.totalSellQuantityByShareholder(shareholder) + enterOrderRq.getQuantity()))
@@ -64,7 +64,11 @@ public class Security {
                     enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW,
                     enterOrderRq.getMinimumExecutionQuantity());
 
+        if (order.isStopLimitOrder() && order.getSecurity().isAuction())
+            throw new InvalidRequestException(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
+
         return handleEnterOrder(order, enterOrderRq.getRequestId(), matcher);
+
     }
 
     public MatchResult handleEnterOrder(Order order, long reqId, Matcher matcher){
