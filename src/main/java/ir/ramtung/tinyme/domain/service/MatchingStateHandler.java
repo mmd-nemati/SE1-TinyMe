@@ -19,6 +19,15 @@ public class MatchingStateHandler extends Handler{
             eventPublisher.publish(new OrderActivatedEvent(rqId, enabled.findByRqId(rqId).getOrderId()));
     }
 
+    private void handleAcuctionChangeEnableds(Security security){
+        EnterOrderRepo buyEnabled = security.getBuyEnabledOrders();
+        EnterOrderRepo sellEnabled = security.getSellEnabledOrders();
+        publishActForEach(buyEnabled);
+        publishActForEach(sellEnabled);
+        security.transportEnabled(Side.SELL);
+        security.transportEnabled(Side.BUY);
+    }
+
     public void handleChangeMatchingState(ChangeMatchingStateRq changeMatchingStateRq) {
         Security security = securityRepository.findSecurityByIsin(changeMatchingStateRq.getSecurityIsin());
         MatchingState nextState = changeMatchingStateRq.getMatchingState();
@@ -27,14 +36,8 @@ public class MatchingStateHandler extends Handler{
             if (!auctionResult.trades().isEmpty()){
                 if(nextState == MatchingState.CONTINUOUS)
                     executeEnabledOrders(security);
-                else{
-                    EnterOrderRepo buyEnabled = security.getBuyEnabledOrders();
-                    EnterOrderRepo sellEnabled = security.getSellEnabledOrders();
-                    publishActForEach(buyEnabled);
-                    publishActForEach(sellEnabled);
-                    security.transportEnabled(Side.SELL);
-                    security.transportEnabled(Side.BUY);
-                }
+                else
+                    handleAcuctionChangeEnableds(security);
             }
             security.setState(nextState);
             eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), nextState));
