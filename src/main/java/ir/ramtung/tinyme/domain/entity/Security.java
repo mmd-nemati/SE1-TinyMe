@@ -262,7 +262,7 @@ public class Security {
                 candidateOrders.enqueue(order);
 
         for (Order order : orderBook.getSellQueue())
-            if (order.getPrice() >= this.openingPrice)
+            if (order.getPrice() <= this.openingPrice)
                 candidateOrders.enqueue(order);
 
         return candidateOrders;
