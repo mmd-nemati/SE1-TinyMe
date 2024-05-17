@@ -55,6 +55,8 @@ public class OrderHandler extends Handler{
 
             publishOpeningPriceEvent(security);
 
+            if(matchResult.outcome() == MatchingOutcome.ACCEPTED && enterOrderRq.getRequestType() == OrderEntryType.UPDATE_ORDER)
+                security.updateDisabledOrders(enterOrderRq);
             if(matchResult.outcome() == MatchingOutcome.EXECUTED &&  enterOrderRq.isStopLimitOrderRq())
                 applyActivationEffects(enterOrderRq, security);
             if (!matchResult.trades().isEmpty()) {
@@ -65,6 +67,10 @@ public class OrderHandler extends Handler{
         }
     }
 
+
+
+
+
     private void removeReqFromDisableds(EnterOrderRq enterOrderRq, Security security){
         EnterOrderRepo orders;
         if(enterOrderRq.getSide() == Side.BUY)
@@ -72,12 +78,7 @@ public class OrderHandler extends Handler{
         else
             orders = security.getSellDisabledOrders();
 
-        for(long reqId : orders.allOrderKeysSortedByStopPrice()){
-            if(orders.findByRqId(reqId).getOrderId() == enterOrderRq.getOrderId()) {
-                orders.removeByRqId(reqId);
-                break;
-            }
-        }
+        orders.removeByOrderId(enterOrderRq.getOrderId());
     }
 
     private void applyActivationEffects(EnterOrderRq rq, Security security){

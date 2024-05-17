@@ -49,7 +49,7 @@ public class Security {
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) throws InvalidRequestException {
         if (enterOrderRq.getSide() == Side.SELL &&
                 !shareholder.hasEnoughPositionsOn(this,
-                orderBook.totalSellQuantityByShareholder(shareholder) + enterOrderRq.getQuantity()))
+                        orderBook.totalSellQuantityByShareholder(shareholder) + enterOrderRq.getQuantity()))
             return MatchResult.notEnoughPositions();
         Order order;
         if (enterOrderRq.getPeakSize() == 0)
@@ -124,7 +124,7 @@ public class Security {
         }
         if (updateOrderRq.getSide() == Side.SELL &&
                 !order.getShareholder().hasEnoughPositionsOn(this,
-                orderBook.totalSellQuantityByShareholder(order.getShareholder()) - order.getQuantity() + updateOrderRq.getQuantity()))
+                        orderBook.totalSellQuantityByShareholder(order.getShareholder()) - order.getQuantity() + updateOrderRq.getQuantity()))
             return MatchResult.notEnoughPositions();
 
         boolean losesPriority = order.isQuantityIncreased(updateOrderRq.getQuantity())
@@ -156,17 +156,17 @@ public class Security {
         return matchResult;
     }
     public void handleDisabledOrders(){
-       handleEachDisabled(buyDisabledOrders, buyEnabledOrders, true);
-       handleEachDisabled(sellDisabledOrders, sellEnabledOrders, false);
+        handleEachDisabled(buyDisabledOrders, buyEnabledOrders, true);
+        handleEachDisabled(sellDisabledOrders, sellEnabledOrders, false);
     }
 
     private boolean isActivationReady(boolean isBuySide, Order disabled){
         return (
                 (isBuySide &&
-                disabled.getStopPrice() <= lastTradePrice)
-                ||
-                (!isBuySide &&
-                disabled.getStopPrice() >= lastTradePrice)
+                        disabled.getStopPrice() <= lastTradePrice)
+                        ||
+                        (!isBuySide &&
+                                disabled.getStopPrice() >= lastTradePrice)
         );
     }
 
@@ -220,7 +220,7 @@ public class Security {
     public int getQuantityBasedOnPrice(int price) {
         int buyQuantity = orderBook.totalBuyQuantityByPrice(price);
         int sellQuantity = orderBook.totalSellQuantityByPrice(price);
-         return Math.min(buyQuantity, sellQuantity);
+        return Math.min(buyQuantity, sellQuantity);
     }
 
     private boolean isNewOneCloser(int newOne, int oldOne, int target){
@@ -292,6 +292,19 @@ public class Security {
         }
 
         return result;
+    }
+
+    public void updateDisabledOrders(EnterOrderRq updateOrderRq){
+        EnterOrderRepo disabledOrders;
+        if(updateOrderRq.getSide() == Side.BUY)
+            disabledOrders = buyDisabledOrders;
+        else
+            disabledOrders = sellDisabledOrders;
+
+        Order order = disabledOrders.findByOrderId(updateOrderRq.getOrderId());
+        long prevRqId = disabledOrders.getRqIdByOrderId(order.getOrderId());
+        disabledOrders.addOrder(order, updateOrderRq.getRequestId());
+        disabledOrders.removeByRqId(prevRqId);
     }
 
     public boolean isAuction() { return this.state == MatchingState.AUCTION; }

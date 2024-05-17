@@ -25,6 +25,13 @@ public class EnterOrderRepo {
                 .orElse(null);
     }
 
+    public long getRqIdByOrderId(long orderId){
+        for(long currentRqId : allOrderKeysSortedByStopPrice())
+            if(findByRqId(currentRqId).getOrderId() == orderId)
+                return(currentRqId);
+        return(0);
+    }
+
     private boolean isRightPlace(Order inHashRq, Order newRq){
         return(
                 (ascendingStore && (inHashRq.getStopPrice()
