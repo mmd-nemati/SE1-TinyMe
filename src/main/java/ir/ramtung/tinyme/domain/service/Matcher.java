@@ -65,12 +65,13 @@ public class Matcher {
         LinkedList<Trade> trades = new LinkedList<>();
         this.openingPrice = openingPrice;
         this.orderBook = candidateOrderBook;
-        for (var buyOrder : candidateOrderBook.getBuyQueue()) {
+        for (var buyOrder : candidateOrderBook.getBuyQueue())
             trades.addAll(execute(buyOrder).trades());
-        }
+
         for (Order order : candidateOrderBook.getBuyQueue())
             if (order.getQuantity() == 0)
                 candidateOrderBook.removeByOrderId(Side.BUY, order.getOrderId());
+
         for (Order order : candidateOrderBook.getSellQueue())
             if (order.getQuantity() == 0)
                 candidateOrderBook.removeByOrderId(Side.SELL, order.getOrderId());

@@ -408,7 +408,9 @@ class SecurityMatchingStateTest {
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o5 = new Order(11, security, Side.SELL, 100, 220, sellBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-
+        Order o6 = new Order(12, security, Side.SELL, 100, 50, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Trade continuousTrade = new Trade(security, 100, 100, o1, o6);
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
 
         changeMatchingState(MatchingState.AUCTION);
@@ -418,8 +420,12 @@ class SecurityMatchingStateTest {
         orderHandler.handleEnterOrder(createNewOrderRequest(5, o5));
 
 
-        changeMatchingState(MatchingState.AUCTION);
+        changeMatchingState(MatchingState.CONTINUOUS);
         verify(eventPublisher).publish(new OrderActivatedEvent(1, 6));
         verify(eventPublisher).publish(new OrderAcceptedEvent(1, 6));
+        orderHandler.handleEnterOrder(createNewOrderRequest(6, o6));
+
+//        changeMatchingState(MatchingState.);
+        verify(eventPublisher).publish(new OrderExecutedEvent(6, 12, List.of(new TradeDTO(continuousTrade))));
     }
 }
