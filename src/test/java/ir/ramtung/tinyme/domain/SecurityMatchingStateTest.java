@@ -294,4 +294,19 @@ class SecurityMatchingStateTest {
 
     }// TODO: تست برای زیاد شدن کردیت اختلاف قیمت حراج با قیمت اردر (line 282-284 security, خط اخر بازگشایی تو پدف)
 
+    @Test
+    void consider_all_of_iceberg_quantity_to_calculate_opening_price(){
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        Order o1 = new Order(6, security, Side.BUY, 100, 150, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o2 = new IcebergOrder(10, security, Side.SELL, 50, 150, sellBroker, shareholder,
+                LocalDateTime.now(), 100, 10, OrderStatus.NEW);
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 0, 0));
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 150, 50));
+    }
+
 }
