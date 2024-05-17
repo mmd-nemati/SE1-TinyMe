@@ -14,14 +14,28 @@ public class MatchingStateHandler extends Handler{
         super(securityRepository, brokerRepository, shareholderRepository, eventPublisher, matcher);
     }
 
+    private void publishActForEach(EnterOrderRepo enabled){
+        for(long rqId : enabled.allOrderKeysSortedByStopPrice())
+            eventPublisher.publish(new OrderActivatedEvent(rqId, enabled.findByRqId(rqId).getOrderId()));
+    }
+
     public void handleChangeMatchingState(ChangeMatchingStateRq changeMatchingStateRq) {
         Security security = securityRepository.findSecurityByIsin(changeMatchingStateRq.getSecurityIsin());
         MatchingState nextState = changeMatchingStateRq.getMatchingState();
         if (security.isAuction()) {
             MatchResult auctionResult = security.handleAuction(matcher, nextState);
-            applyActivationEffects(); // TODO:
-            if (!auctionResult.trades().isEmpty())
-                executeEnabledOrders(security);
+            if (!auctionResult.trades().isEmpty()){
+                if(nextState == MatchingState.CONTINUOUS)
+                    executeEnabledOrders(security);
+                else{
+                    EnterOrderRepo buyEnabled = security.getBuyEnabledOrders();
+                    EnterOrderRepo sellEnabled = security.getSellEnabledOrders();
+                    publishActForEach(buyEnabled);
+                    publishActForEach(sellEnabled);
+                    security.transportEnabled(Side.SELL);
+                    security.transportEnabled(Side.BUY);
+                }
+            }
             security.setState(nextState);
             eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), nextState));
 

@@ -322,4 +322,19 @@ public class Security {
     }
 
     public boolean isAuction() { return this.state == MatchingState.AUCTION; }
+
+    public void transportEnabled(Side side){
+        EnterOrderRepo orders;
+        if(side == Side.BUY)
+            orders = buyEnabledOrders;
+        else
+            orders = sellEnabledOrders;
+
+        for(long rqId : orders.allOrderKeysSortedByStopPrice()){
+            Order order = orders.findByRqId(rqId);
+            order.setStopPriceZero();
+            orderBook.putBack(order);
+        }
+        orders.clear();
+    }
 }

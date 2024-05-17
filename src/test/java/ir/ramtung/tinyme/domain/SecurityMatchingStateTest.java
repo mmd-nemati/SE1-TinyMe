@@ -419,7 +419,7 @@ class SecurityMatchingStateTest {
 
 
         changeMatchingState(MatchingState.AUCTION);
-        verify(eventPublisher).publish(new OrderActivatedEvent(1, 1));
-        verify(eventPublisher).publish(new OrderAcceptedEvent(1, 1));
+        verify(eventPublisher).publish(new OrderActivatedEvent(1, 6));
+        verify(eventPublisher).publish(new OrderAcceptedEvent(1, 6));
     }
 }

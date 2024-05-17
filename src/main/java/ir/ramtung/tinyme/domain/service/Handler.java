@@ -84,21 +84,4 @@ abstract class Handler {
                         (side == Side.SELL && (security.getSellEnabledOrders().theSize() == 0))
         );
     }
-
-    protected void applyActivationEffects(EnterOrderRq rq, Security security){
-        rq.setStopPriceZero();
-        if(rq.getRequestType() == OrderEntryType.UPDATE_ORDER)
-            removeReqFromDisableds(rq, security);
-        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
-    }
-
-    protected void removeReqFromDisableds(EnterOrderRq enterOrderRq, Security security){
-        EnterOrderRepo orders;
-        if(enterOrderRq.getSide() == Side.BUY)
-            orders = security.getBuyDisabledOrders();
-        else
-            orders = security.getSellDisabledOrders();
-
-        orders.removeByOrderId(enterOrderRq.getOrderId());
-    }
 }

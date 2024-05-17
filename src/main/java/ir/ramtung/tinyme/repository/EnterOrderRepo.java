@@ -92,4 +92,8 @@ public class EnterOrderRepo {
         return sortedKeys;
     }
 
+    public void clear() {
+        orderById.clear();
+    }
+
 }
