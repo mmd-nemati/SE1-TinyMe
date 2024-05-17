@@ -10,6 +10,7 @@ import java.util.ListIterator;
 @Service
 public class Matcher {
     private MatchingState securityState;
+    private int openingPrice;
     private OrderBook orderBook;
     public MatchResult match(Order newOrder) {
         int prevQuantity = newOrder.getQuantity();
@@ -23,8 +24,12 @@ public class Matcher {
             Order matchingOrder = orderBook.matchWithFirst(newOrder);
             if (matchingOrder == null)
                 break;
-
-            Trade trade = new Trade(newOrder.getSecurity(), matchingOrder.getPrice(), Math.min(newOrder.getQuantity(), matchingOrder.getQuantity()), newOrder, matchingOrder);
+            int tradePrice;
+            if (this.securityState == MatchingState.AUCTION)
+                tradePrice = openingPrice;
+            else
+                tradePrice = matchingOrder.getPrice();
+            Trade trade = new Trade(newOrder.getSecurity(), tradePrice, Math.min(newOrder.getQuantity(), matchingOrder.getQuantity()), newOrder, matchingOrder);
             if (newOrder.getSide() == Side.BUY && this.securityState == MatchingState.CONTINUOUS) {
                 if (trade.buyerHasEnoughCredit())
                     trade.decreaseBuyersCredit();
@@ -62,6 +67,7 @@ public class Matcher {
         LinkedList<Trade> trades = new LinkedList<>();
         LinkedList<Order> buyQueue = candidateOrderBook.getBuyQueue();
         LinkedList<Order> sellQueue = candidateOrderBook.getSellQueue();
+        this.openingPrice = openingPrice;
         this.orderBook = candidateOrderBook;
         for (var buyOrder : buyQueue) {
 //            trades.addAll(match(buyOrder).trades());

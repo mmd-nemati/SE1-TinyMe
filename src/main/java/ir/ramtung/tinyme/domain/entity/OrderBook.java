@@ -115,4 +115,15 @@ public class OrderBook {
                 .mapToInt(Order::getTotalQuantity)
                 .sum();
     }
+
+    public OrderBook snapshot() {
+        OrderBook copy = new OrderBook();
+        for (Order order : buyQueue)
+            copy.enqueue(order.snapshot());
+
+        for (Order order : sellQueue)
+            copy.enqueue(order.snapshot());
+
+        return copy;
+    }
 }

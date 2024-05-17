@@ -13,7 +13,6 @@ import lombok.Setter;
 import org.jgroups.util.Tuple;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 @Getter
@@ -228,13 +227,13 @@ public class Security {
         return(Math.abs(newOne - target) < Math.abs(oldOne - target));
     }
 
-    private Tuple<Integer, Integer> calcOpeningPraiceForEmptyQueue(){
+    private Tuple<Integer, Integer> calcOpeningPriceForEmptyQueue(){
         this.openingPrice = 0;
         return(new Tuple<>(0, 0));
     }
     public Tuple<Integer, Integer> calculateOpeningPrice(){
         if(orderBook.getBuyQueue().isEmpty() || orderBook.getSellQueue().isEmpty())
-            return(calcOpeningPraiceForEmptyQueue());
+            return(calcOpeningPriceForEmptyQueue());
 
         Tuple<Integer, Integer> priceQuantity = new Tuple<>(
                 this.lastTradePrice, getQuantityBasedOnPrice(this.lastTradePrice));
@@ -274,13 +273,21 @@ public class Security {
         OrderBook candidateOrders = getCandidateOrders();
         if (candidateOrders.getBuyQueue().isEmpty() || candidateOrders.getSellQueue().isEmpty())
             return MatchResult.auctioned(new ArrayList<Trade>()); // TODO
-        MatchResult result = matcher.auctionMatch(getCandidateOrders(), this.openingPrice);
+        OrderBook candidateOrdersCopy = candidateOrders.snapshot();
+        MatchResult result = matcher.auctionMatch(candidateOrders, this.openingPrice);
         for (Order order : candidateOrders.getBuyQueue())
             if (order.getQuantity() == 0)
                 this.orderBook.removeByOrderId(Side.BUY, order.getOrderId());
         for (Order order : candidateOrders.getSellQueue())
             if (order.getQuantity() == 0)
                 this.orderBook.removeByOrderId(Side.SELL, order.getOrderId());
+        for (Order order : candidateOrdersCopy.getBuyQueue())
+            if (!candidateOrders.hasByOrderId(Side.BUY, order.getOrderId()))
+                this.orderBook.removeByOrderId(Side.BUY, order.getOrderId());
+        for (Order order : candidateOrdersCopy.getSellQueue())
+            if (!candidateOrders.hasByOrderId(Side.SELL, order.getOrderId()))
+                this.orderBook.removeByOrderId(Side.SELL, order.getOrderId());
+
         for (Trade trade : result.trades())
             if (trade.getPrice() < trade.getBuy().getPrice())
                 trade.getBuy().getBroker().increaseCreditBy((long) (trade.getBuy().getPrice() - trade.getPrice()) * trade.getQuantity());
