@@ -395,4 +395,31 @@ class SecurityMatchingStateTest {
         verify(eventPublisher, never()).publish(any(TradeEvent.class));
         verify(eventPublisher, never()).publish(any(OpeningPriceEvent.class));
     }
+
+    @Test
+    void new_activated_orders_match_in_auction_to_continuous(){
+        Order o1 = new Order(6, security, Side.BUY, 100, 100, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 40);
+        Order o2 = new Order(10, security, Side.SELL, 100, 50, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o3 = new Order(7, security, Side.BUY, 100, 200, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o4 = new Order(8, security, Side.BUY, 100, 40, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o5 = new Order(11, security, Side.SELL, 100, 220, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+
+        changeMatchingState(MatchingState.AUCTION);
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+        orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
+        orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
+        orderHandler.handleEnterOrder(createNewOrderRequest(5, o5));
+
+
+        changeMatchingState(MatchingState.AUCTION);
+        verify(eventPublisher).publish(new OrderActivatedEvent(1, 1));
+        verify(eventPublisher).publish(new OrderAcceptedEvent(1, 1));
+    }
 }

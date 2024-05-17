@@ -269,7 +269,7 @@ public class Security {
         return candidateOrders;
     }
 
-    public MatchResult handleAuction(Matcher matcher) {
+    public MatchResult handleAuction(Matcher matcher, MatchingState nextState) {
         OrderBook candidateOrders = getCandidateOrders();
         if (candidateOrders.getBuyQueue().isEmpty() || candidateOrders.getSellQueue().isEmpty())
             return MatchResult.auctioned(new ArrayList<>());
@@ -289,6 +289,20 @@ public class Security {
         if (!result.trades().isEmpty()) {
             this.lastTradePrice = result.trades().getLast().getPrice();
             handleDisabledOrders();
+//            if (nextState == MatchingState.AUCTION) {
+//                for (var rqId : buyEnabledOrders.allOrderKeysSortedByStopPrice()) {
+//                    Order enabledOrder = buyEnabledOrders.findByRqId(rqId);
+//                    this.orderBook.enqueue(enabledOrder);
+//                    buyEnabledOrders.removeByRqId(rqId);
+//                }
+//                for (var rqId : sellEnabledOrders.allOrderKeysSortedByStopPrice()) {
+//                    Order enabledOrder = sellEnabledOrders.findByRqId(rqId);
+//                    this.orderBook.enqueue(enabledOrder);
+//                    sellEnabledOrders.removeByRqId(rqId);
+//                }
+//
+//            }
+
         }
 
         return result;

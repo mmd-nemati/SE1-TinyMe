@@ -71,22 +71,22 @@ public class OrderHandler extends Handler{
 
 
 
-    private void removeReqFromDisableds(EnterOrderRq enterOrderRq, Security security){
-        EnterOrderRepo orders;
-        if(enterOrderRq.getSide() == Side.BUY)
-            orders = security.getBuyDisabledOrders();
-        else
-            orders = security.getSellDisabledOrders();
-
-        orders.removeByOrderId(enterOrderRq.getOrderId());
-    }
-
-    private void applyActivationEffects(EnterOrderRq rq, Security security){
-        rq.setStopPriceZero();
-        if(rq.getRequestType() == OrderEntryType.UPDATE_ORDER)
-            removeReqFromDisableds(rq, security);
-        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
-    }
+//    private void removeReqFromDisableds(EnterOrderRq enterOrderRq, Security security){
+//        EnterOrderRepo orders;
+//        if(enterOrderRq.getSide() == Side.BUY)
+//            orders = security.getBuyDisabledOrders();
+//        else
+//            orders = security.getSellDisabledOrders();
+//
+//        orders.removeByOrderId(enterOrderRq.getOrderId());
+//    }
+//
+//    private void applyActivationEffects(EnterOrderRq rq, Security security){
+//        rq.setStopPriceZero();
+//        if(rq.getRequestType() == OrderEntryType.UPDATE_ORDER)
+//            removeReqFromDisableds(rq, security);
+//        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
+//    }
 
     private void applyExecutionEffects(Security security, EnterOrderRq rq, MatchResult matchResult){
         rq.setStopPriceZero();

@@ -9,6 +9,7 @@ import ir.ramtung.tinyme.messaging.TradeDTO;
 import ir.ramtung.tinyme.messaging.event.OrderActivatedEvent;
 import ir.ramtung.tinyme.messaging.event.OrderExecutedEvent;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
+import ir.ramtung.tinyme.messaging.request.OrderEntryType;
 import ir.ramtung.tinyme.repository.BrokerRepository;
 import ir.ramtung.tinyme.repository.EnterOrderRepo;
 import ir.ramtung.tinyme.repository.SecurityRepository;
@@ -82,5 +83,22 @@ abstract class Handler {
                         ||
                         (side == Side.SELL && (security.getSellEnabledOrders().theSize() == 0))
         );
+    }
+
+    protected void applyActivationEffects(EnterOrderRq rq, Security security){
+        rq.setStopPriceZero();
+        if(rq.getRequestType() == OrderEntryType.UPDATE_ORDER)
+            removeReqFromDisableds(rq, security);
+        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
+    }
+
+    protected void removeReqFromDisableds(EnterOrderRq enterOrderRq, Security security){
+        EnterOrderRepo orders;
+        if(enterOrderRq.getSide() == Side.BUY)
+            orders = security.getBuyDisabledOrders();
+        else
+            orders = security.getSellDisabledOrders();
+
+        orders.removeByOrderId(enterOrderRq.getOrderId());
     }
 }
