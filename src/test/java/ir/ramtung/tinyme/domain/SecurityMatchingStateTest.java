@@ -81,6 +81,9 @@ class SecurityMatchingStateTest {
         else
             security.getSellDisabledOrders().findByOrderId(order.getOrderId()).setStopPriceZero();
     }
+    private void changeMatchingState(MatchingState state) {
+        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), state));
+    }
 
     private EnterOrderRq createNewOrderRequest(long rqId, Order order) {
         return EnterOrderRq.createNewOrderRq(rqId, order.getSecurity().getIsin(), order.getOrderId(),
@@ -90,19 +93,19 @@ class SecurityMatchingStateTest {
 
     @Test
     void verify_change_state_event() {
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         verify(eventPublisher).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.AUCTION));
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         verify(eventPublisher, times(2)).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.AUCTION));
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.CONTINUOUS));
+        changeMatchingState(MatchingState.CONTINUOUS);
         verify(eventPublisher).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.CONTINUOUS));
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.CONTINUOUS));
+        changeMatchingState(MatchingState.CONTINUOUS);
         verify(eventPublisher, times(2)).publish(new SecurityStateChangedEvent(security.getIsin(), MatchingState.CONTINUOUS));
     }
 
     @Test
     void cant_make_new_stop_order_in_auction_state() {
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 50);
 
@@ -117,7 +120,7 @@ class SecurityMatchingStateTest {
                 LocalDateTime.now(), OrderStatus.NEW, 0, 120);
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
 
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
 
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(2, security.getIsin(), 6,
                 LocalDateTime.now(), Side.BUY, 25, 580, buyBroker.getBrokerId(),
@@ -131,7 +134,7 @@ class SecurityMatchingStateTest {
                 LocalDateTime.now(), OrderStatus.NEW, 0, 120);
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
 
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
 
         orderHandler.handleDeleteOrder(new DeleteOrderRq(2, security.getIsin(), Side.BUY, 6));
         verify(eventPublisher).publish(new OrderRejectedEvent(2, 6, List.of(Message.CANNOT_DELETE_STOP_ORDER_IN_AUCTION_STATE)));
@@ -139,7 +142,7 @@ class SecurityMatchingStateTest {
 
     @Test
     void cant_make_new_order_with_min_exec_in_auction_state() {
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 50, 0);
 
@@ -149,7 +152,7 @@ class SecurityMatchingStateTest {
 
     @Test
     void new_orders_shouldnt_start_matching_in_auction_state() {
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
@@ -166,7 +169,7 @@ class SecurityMatchingStateTest {
     @Test
     void correct_opening_price_event_with_new_orders() {
         mockTradeWithPrice(170);
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         Order o1 = new Order(6, security, Side.BUY, 50, 180, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
@@ -189,13 +192,10 @@ class SecurityMatchingStateTest {
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 180, 120));
     }
 
-
     @Test
-    void activated_orders_in_auction_make_trade_in_next_round_after_update() {
-        ChangeMatchingStateRq auctionRq = new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION);
+    void unactivated_order_actives_after_auction_to_auction() {
         Order o1 = new Order(6, security, Side.BUY, 100, 100, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 40);
-
         Order o2 = new Order(10, security, Side.SELL, 100, 50, sellBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o3 = new Order(7, security, Side.BUY, 100, 200, buyBroker, shareholder,
@@ -205,31 +205,56 @@ class SecurityMatchingStateTest {
         Order o5 = new Order(11, security, Side.SELL, 100, 220, sellBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
 
-
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher, never()).publish(new OrderActivatedEvent(1, 6));
 
-        matchingStateHandler.handleChangeMatchingState(auctionRq);
+        changeMatchingState(MatchingState.AUCTION);
         orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
         orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
         orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
         orderHandler.handleEnterOrder(createNewOrderRequest(5, o5));
-        matchingStateHandler.handleChangeMatchingState(auctionRq);
+
+        changeMatchingState(MatchingState.AUCTION);
         verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 50, 100, 7, 10));
         verify(eventPublisher).publish(new OrderActivatedEvent(1, 6));
+        verify(eventPublisher).publish(new OrderAcceptedEvent(1, 6));
+    }
+
+    @Test
+    void activated_orders_in_auction_make_trade_in_next_auction_after_update() {
+        Order o1 = new Order(6, security, Side.BUY, 100, 100, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 40);
+        Order o2 = new Order(10, security, Side.SELL, 100, 50, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o3 = new Order(7, security, Side.BUY, 100, 200, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o4 = new Order(8, security, Side.BUY, 100, 40, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o5 = new Order(11, security, Side.SELL, 100, 220, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+
+       changeMatchingState(MatchingState.AUCTION);
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+        orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
+        orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
+        orderHandler.handleEnterOrder(createNewOrderRequest(5, o5));
+
+       changeMatchingState(MatchingState.AUCTION);
 
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(5, security.getIsin(), 6,
                 LocalDateTime.now(), Side.BUY, 100, 220, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 0));
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 220, 100));
 
-        matchingStateHandler.handleChangeMatchingState(auctionRq);
+       changeMatchingState(MatchingState.AUCTION);
         verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 220, 100, 6, 11));
     }
 
     @Test
     void correct_broker_credit_of_orders_in_auction_state() {
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
@@ -244,7 +269,7 @@ class SecurityMatchingStateTest {
         assertThat(buyBroker.getCredit()).isEqualTo(100_000_000 - 100 * 170);
         assertThat(sellBroker.getCredit()).isZero();
 
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         assertThat(buyBroker.getCredit()).isEqualTo(100_000_000 - 100 * 170);
         assertThat(sellBroker.getCredit()).isEqualTo( 50 * 170);
     }
@@ -257,7 +282,7 @@ class SecurityMatchingStateTest {
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher, never()).publish(new OrderActivatedEvent(1, 6));
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
 
         mockOrderActivation(o1);
 
@@ -268,7 +293,7 @@ class SecurityMatchingStateTest {
 
     @Test
     void correct_normal_auction_matching() {
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
@@ -283,7 +308,7 @@ class SecurityMatchingStateTest {
         orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
         orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
 
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
 
         verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 380, 50, 7, 10));
         verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 380, 70, 7, 11));
@@ -291,22 +316,83 @@ class SecurityMatchingStateTest {
     }
     @Test
     void correct_paying_dept_of_auction_to_buy_broker() {
+        mockTradeWithPrice(380);
+        changeMatchingState(MatchingState.AUCTION);
+        Order o3 = new Order(7, security, Side.BUY, 120, 400, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o4 = new Order(11, security, Side.SELL, 150, 380, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
 
-    }// TODO: تست برای زیاد شدن کردیت اختلاف قیمت حراج با قیمت اردر (line 282-284 security, خط اخر بازگشایی تو پدف)
+        orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
+        orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
+        long prevCredit = buyBroker.getCredit();
+
+        changeMatchingState(MatchingState.AUCTION);
+
+        int dept = (400 - 380) * 120;
+        assertThat(buyBroker.getCredit()).isEqualTo(prevCredit + dept);
+    }
 
     @Test
     void consider_all_of_iceberg_quantity_to_calculate_opening_price(){
-        matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), MatchingState.AUCTION));
+        changeMatchingState(MatchingState.AUCTION);
         Order o1 = new Order(6, security, Side.BUY, 100, 150, buyBroker, shareholder,
                 LocalDateTime.now(), OrderStatus.NEW, 0, 0);
         Order o2 = new IcebergOrder(10, security, Side.SELL, 50, 150, sellBroker, shareholder,
-                LocalDateTime.now(), 100, 10, OrderStatus.NEW);
+                LocalDateTime.now(), 20, 10, OrderStatus.NEW);
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 0, 0));
 
         orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 150, 50));
+        verify(eventPublisher, never()).publish(new OpeningPriceEvent(security.getIsin(), 150, 20));
     }
 
+    @Test
+    void correct_continuous_matching_for_remainder_order_from_auction() {
+        mockTradeWithPrice(380);
+        changeMatchingState(MatchingState.AUCTION);
+        Order o1 = new Order(7, security, Side.BUY, 120, 400, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o2 = new Order(11, security, Side.SELL, 150, 380, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o3 = new Order(6, security, Side.BUY, 100, 420, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Trade remainderTrade = new Trade(security, 380, 30, o3, o2);
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+
+        changeMatchingState(MatchingState.CONTINUOUS);
+        verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 380, 120, 7, 11));
+        verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 380, 120));
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
+        verify(eventPublisher).publish(new OrderAcceptedEvent(3, 6));
+        verify(eventPublisher).publish(new OrderExecutedEvent(3, 6, List.of(new TradeDTO(remainderTrade))));
+    }
+
+    @Test
+    void nothing_new_matches_with_continuous_to_auction() {
+        Order o1 = new Order(7, security, Side.BUY, 120, 400, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o2 = new Order(11, security, Side.SELL, 150, 380, sellBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o3 = new Order(6, security, Side.BUY, 100, 420, buyBroker, shareholder,
+                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Trade t1 = new Trade(security, 400, 120, o1, o2);
+        Trade t2 = new Trade(security, 380, 30, o3, o2);
+
+        orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
+        orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
+        orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
+        verify(eventPublisher).publish(new OrderExecutedEvent(2, 11, List.of(new TradeDTO(t1))));
+        verify(eventPublisher).publish(new OrderExecutedEvent(3, 6, List.of(new TradeDTO(t2))));
+
+        changeMatchingState(MatchingState.CONTINUOUS);
+        verify(eventPublisher, times(2)).publish(any(OrderExecutedEvent.class));
+        verify(eventPublisher, never()).publish(any(TradeEvent.class));
+        verify(eventPublisher, never()).publish(any(OpeningPriceEvent.class));
+    }
 }
