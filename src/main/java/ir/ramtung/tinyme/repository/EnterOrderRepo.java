@@ -47,7 +47,6 @@ public class EnterOrderRepo {
         orderById.put(reqId, newRq);
     }
 
-
     public void removeByRqId(long rqId) {
         if (existByRqId(rqId))
             orderById.remove(rqId);
@@ -75,7 +74,9 @@ public class EnterOrderRepo {
 
     public Iterable<? extends Long> allOrderKeysSortedByStopPrice() {
         List<Long> sortedKeys = new ArrayList<>(orderById.keySet());
-        Comparator<Long> comparator = Comparator.comparing(orderId -> orderById.get(orderId).getStopPrice());
+        Comparator<Long> comparator = Comparator
+                .comparing((Long orderId) -> orderById.get(orderId).getStopPrice())
+                .thenComparing(orderId -> orderById.get(orderId).getEntryTime());
 
         if (!ascendingStore)
             comparator = comparator.reversed();

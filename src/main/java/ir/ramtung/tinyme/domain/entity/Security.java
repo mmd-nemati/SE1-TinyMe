@@ -272,15 +272,9 @@ public class Security {
     public MatchResult handleAuction(Matcher matcher) {
         OrderBook candidateOrders = getCandidateOrders();
         if (candidateOrders.getBuyQueue().isEmpty() || candidateOrders.getSellQueue().isEmpty())
-            return MatchResult.auctioned(new ArrayList<Trade>()); // TODO
+            return MatchResult.auctioned(new ArrayList<>());
         OrderBook candidateOrdersCopy = candidateOrders.snapshot();
         MatchResult result = matcher.auctionMatch(candidateOrders, this.openingPrice);
-        for (Order order : candidateOrders.getBuyQueue())
-            if (order.getQuantity() == 0)
-                this.orderBook.removeByOrderId(Side.BUY, order.getOrderId());
-        for (Order order : candidateOrders.getSellQueue())
-            if (order.getQuantity() == 0)
-                this.orderBook.removeByOrderId(Side.SELL, order.getOrderId());
         for (Order order : candidateOrdersCopy.getBuyQueue())
             if (!candidateOrders.hasByOrderId(Side.BUY, order.getOrderId()))
                 this.orderBook.removeByOrderId(Side.BUY, order.getOrderId());

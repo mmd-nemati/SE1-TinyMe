@@ -14,10 +14,9 @@ public class Matcher {
     private OrderBook orderBook;
     public MatchResult match(Order newOrder) {
         int prevQuantity = newOrder.getQuantity();
-        if (securityState == MatchingState.CONTINUOUS) {
+        if (securityState == MatchingState.CONTINUOUS)
             this.orderBook = newOrder.getSecurity().getOrderBook();
-        }
-//        OrderBook orderBook = newOrder.getSecurity().getOrderBook();
+
         LinkedList<Trade> trades = new LinkedList<>();
 
         while (orderBook.hasOrderOfType(newOrder.getSide().opposite()) && newOrder.getQuantity() > 0) {
@@ -63,57 +62,20 @@ public class Matcher {
     }
 
     public MatchResult auctionMatch(OrderBook candidateOrderBook, int openingPrice) {
-        MatchResult result;
         LinkedList<Trade> trades = new LinkedList<>();
-        LinkedList<Order> buyQueue = candidateOrderBook.getBuyQueue();
-        LinkedList<Order> sellQueue = candidateOrderBook.getSellQueue();
         this.openingPrice = openingPrice;
         this.orderBook = candidateOrderBook;
-        for (var buyOrder : buyQueue) {
-//            trades.addAll(match(buyOrder).trades());
-            var a = execute(buyOrder);
-            trades.addAll(a.trades());
+        for (var buyOrder : candidateOrderBook.getBuyQueue()) {
+            trades.addAll(execute(buyOrder).trades());
         }
-//        for (var buyOrder : buyQueue) {
-//
-//            while (!sellQueue.isEmpty() && buyOrder.getQuantity() > 0) {
-//                Order matchingSellOrder = sellQueue.getFirst();
-//
-//                Trade trade = new Trade(buyOrder.getSecurity(), openingPrice, Math.min(buyOrder.getQuantity(),
-//                        matchingSellOrder.getQuantity()), buyOrder, matchingSellOrder);
-//
-//                // Added by me. TODO: Is there increase in path? I don't think so.
-//                buyOrder.getBroker().increaseCreditBy(buyOrder.getValue());
-//                trade.decreaseBuyersCredit();
-//                trade.increaseSellersCredit();
-//                trades.add(trade);
-//
-//                if (buyOrder.getQuantity() > matchingSellOrder.getQuantity()) {
-//                    buyOrder.decreaseQuantity(matchingSellOrder.getQuantity());
-//                    buyOrder.getBroker().decreaseCreditBy(buyOrder.getValue());
-//                    if (buyOrder instanceof IcebergOrder icebergOrder) {
-//                        icebergOrder.replenish();
-//                    }
-//                    matchingSellOrder.makeQuantityZero();
-//                    // TODO:: handle if sell order is iceberg
-//                } else if (buyOrder.getQuantity() == matchingSellOrder.getQuantity()) {
-//                    buyOrder.makeQuantityZero();
-//                    matchingSellOrder.makeQuantityZero();
-//                    // TODO:: handle if sell and buy order is iceberg
-//                } else { // buyOrder.getQuantity() < matchingSellOrder.getQuantity()
-//                    matchingSellOrder.decreaseQuantity(buyOrder.getQuantity());
-//                    if (matchingSellOrder instanceof IcebergOrder icebergOrder) {
-//                        icebergOrder.replenish(); //TODO what if the matchingorder is an iceberg order?
-//                    }
-//                    buyOrder.makeQuantityZero();
-//                    // TODO:: handle if buy order is iceberg
-//
-//                }
-//            }
-//        }
+        for (Order order : candidateOrderBook.getBuyQueue())
+            if (order.getQuantity() == 0)
+                candidateOrderBook.removeByOrderId(Side.BUY, order.getOrderId());
+        for (Order order : candidateOrderBook.getSellQueue())
+            if (order.getQuantity() == 0)
+                candidateOrderBook.removeByOrderId(Side.SELL, order.getOrderId());
 
-        result = MatchResult.auctioned(trades);
-        return result;
+        return MatchResult.auctioned(trades);
     }
 
 
@@ -153,18 +115,6 @@ public class Matcher {
 
     public MatchResult execute(Order order) {
         MatchResult result;
-//        if (this.securityState == MatchingState.AUCTION) {
-//            if (order.getQuantity() > 0) {
-//                if (order.getSide() == Side.BUY) {
-//                    if (!order.getBroker().hasEnoughCredit(order.getValue()))
-//                        return MatchResult.notEnoughCredit();
-//                    order.getBroker().decreaseCreditBy(order.getValue());
-//                }
-//                order.getSecurity().getOrderBook().enqueue(order);
-//            }
-//            result = MatchResult.executed(order, new LinkedList<>());
-//            return result;
-//        }
         result = match(order);
 
         order.unmarkFirstEntry();
