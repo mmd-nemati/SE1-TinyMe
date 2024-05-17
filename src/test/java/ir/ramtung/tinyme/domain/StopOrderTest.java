@@ -477,7 +477,7 @@ public class StopOrderTest {
 
         verify(eventPublisher).publish(new OrderUpdatedEvent(6, 10));
 
-        verify(eventPublisher).publish(new OrderActivatedEvent(3, 10));
+        verify(eventPublisher).publish(new OrderActivatedEvent(6, 10));
         verify(eventPublisher).publish(new OrderActivatedEvent(4, 11));
     }
 
