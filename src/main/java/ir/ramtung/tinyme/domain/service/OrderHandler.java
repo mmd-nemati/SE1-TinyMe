@@ -80,7 +80,7 @@ public class OrderHandler extends Handler{
         }
     }
 
-    private void applyActivationEffects(EnterOrderRq rq, Security){
+    private void applyActivationEffects(EnterOrderRq rq, Security security){
         rq.setStopPriceZero();
         if(rq.getRequestType() == OrderEntryType.UPDATE_ORDER)
             removeReqFromDisableds(rq, security);
