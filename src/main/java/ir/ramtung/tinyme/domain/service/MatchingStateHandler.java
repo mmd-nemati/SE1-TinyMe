@@ -28,23 +28,30 @@ public class MatchingStateHandler extends Handler{
         security.transportEnabled(Side.BUY);
     }
 
+    private void applyTradeEffects(MatchResult auctionResult, MatchingState nextState, Security security){
+        if (!auctionResult.trades().isEmpty()){
+            if(nextState == MatchingState.CONTINUOUS)
+                executeEnabledOrders(security);
+            else
+                handleAuctionChangeEnableds(security);
+        }
+    }
+
+    private void handleAuctionChange(MatchingState nextState, Security security){
+        MatchResult auctionResult = security.openAuction(matcher, nextState);
+        applyTradeEffects(auctionResult, nextState, security);
+        security.setState(nextState);
+        eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), nextState));
+
+        for (Trade trade : auctionResult.trades())
+            eventPublisher.publish(new TradeEvent(trade.getSecurity().getIsin(), trade.getPrice(), trade.getQuantity(),
+                    trade.getBuy().getOrderId(), trade.getSell().getOrderId()));
+    }
     public void handleChangeMatchingState(ChangeMatchingStateRq changeMatchingStateRq) {
         Security security = securityRepository.findSecurityByIsin(changeMatchingStateRq.getSecurityIsin());
         MatchingState nextState = changeMatchingStateRq.getMatchingState();
         if (security.isAuction()) {
-            MatchResult auctionResult = security.openAuction(matcher, nextState);
-            if (!auctionResult.trades().isEmpty()){
-                if(nextState == MatchingState.CONTINUOUS)
-                    executeEnabledOrders(security);
-                else
-                    handleAuctionChangeEnableds(security);
-            }
-            security.setState(nextState);
-            eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), nextState));
-
-            for (Trade trade : auctionResult.trades())
-                eventPublisher.publish(new TradeEvent(trade.getSecurity().getIsin(), trade.getPrice(), trade.getQuantity(),
-                        trade.getBuy().getOrderId(), trade.getSell().getOrderId()));
+            handleAuctionChange(nextState, security);
         }
         else {
             eventPublisher.publish(new SecurityStateChangedEvent(security.getIsin(), nextState));
