@@ -223,34 +223,36 @@ public class Security {
         int sellQuantity = orderBook.totalSellQuantityByPrice(price);
          return Math.min(buyQuantity, sellQuantity);
     }
+
+    private boolean isNewOneCloser(int newOne, int oldOne, int target){
+        return(Math.abs(newOne - target) < Math.abs(oldOne - target));
+    }
+
+    private Tuple<Integer, Integer> calcOpeningPraiceForEmptyQueue(){
+        this.openingPrice = 0;
+        return(new Tuple<>(0, 0));
+    }
     public Tuple<Integer, Integer> calculateOpeningPrice(){
-        Tuple<Integer, Integer> priceQuantity = new Tuple<>(0, 0);
-        int min = orderBook.getBuyQueue().stream()
-                .map(Order::getPrice)
-                .min(Integer::compare)
-                .orElse(0);// TODO-> These streams are not needed as the orders are stored in sorted based on the price
-        int max = orderBook.getSellQueue().stream()
-                .map(Order::getPrice)
-                .max(Integer::compare)
-                .orElse(0);// TODO-> These streams are not needed as the orders are stored in sorted based on the price
-        boolean flag = false;
-        int closestPrice = Integer.MAX_VALUE;
+        if(orderBook.getBuyQueue().isEmpty() || orderBook.getSellQueue().isEmpty())
+            return(calcOpeningPraiceForEmptyQueue());
+
+        Tuple<Integer, Integer> priceQuantity = new Tuple<>(
+                this.lastTradePrice, getQuantityBasedOnPrice(this.lastTradePrice));
+        int min = orderBook.getBuyQueue().getLast().getPrice();
+        int max = orderBook.getSellQueue().getLast().getPrice();
+
         for (int cur = min; cur <= max; cur++) {
-            flag = true;
-            int tempQuantity = getQuantityBasedOnPrice(cur);
+            int currentQuantity = getQuantityBasedOnPrice(cur);
 
-            if (tempQuantity > priceQuantity.getVal2())
-                priceQuantity = new Tuple<>(cur, tempQuantity);
+            if (currentQuantity > priceQuantity.getVal2())
+                priceQuantity = new Tuple<>(cur, currentQuantity);
 
-            else if (tempQuantity == priceQuantity.getVal2())
-                if (Math.abs(cur - this.lastTradePrice) < Math.abs(closestPrice - this.lastTradePrice)) {
-                    closestPrice = cur;
-                    priceQuantity = new Tuple<>(cur, tempQuantity);
-                }
+            else if (currentQuantity == priceQuantity.getVal2())
+                if(isNewOneCloser(cur, priceQuantity.getVal1(), this.lastTradePrice))
+                    priceQuantity = new Tuple<>(cur, currentQuantity);
         }
-        if (!flag)
-            priceQuantity = new Tuple<>(this.lastTradePrice, getQuantityBasedOnPrice(this.lastTradePrice));
 
+        this.openingPrice = priceQuantity.getVal1();
         return priceQuantity;
     }
 
