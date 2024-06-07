@@ -26,7 +26,6 @@ public class Security {
     private OrderBook orderBook = new OrderBook();
     private final static boolean ASCENDING = true;
     private final static boolean DESCENDING = false;
-
     @Builder.Default
     EnterOrderRepo buyDisabledOrders = new EnterOrderRepo(ASCENDING);
 
@@ -60,15 +59,32 @@ public class Security {
 
     private Order makeOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder) {
         if (enterOrderRq.getPeakSize() == 0)
-            return new Order(enterOrderRq.getOrderId(), this, enterOrderRq.getSide(),
-                    enterOrderRq.getQuantity(), enterOrderRq.getPrice(), broker,
-                    shareholder, enterOrderRq.getEntryTime(), OrderStatus.NEW,
-                    enterOrderRq.getMinimumExecutionQuantity(), enterOrderRq.getStopPrice());
+            return Order.builder()
+                    .orderId(enterOrderRq.getOrderId())
+                    .security(this)
+                    .side(enterOrderRq.getSide())
+                    .quantity(enterOrderRq.getQuantity())
+                    .price(enterOrderRq.getPrice())
+                    .broker(broker)
+                    .shareholder(shareholder)
+                    .entryTime(enterOrderRq.getEntryTime())
+                    .status(OrderStatus.NEW)
+                    .minimumExecutionQuantity(enterOrderRq.getMinimumExecutionQuantity())
+                    .stopPrice(enterOrderRq.getStopPrice()).build();
         else
-            return new IcebergOrder(enterOrderRq.getOrderId(), this, enterOrderRq.getSide(),
-                    enterOrderRq.getQuantity(), enterOrderRq.getPrice(), broker, shareholder,
-                    enterOrderRq.getEntryTime(), enterOrderRq.getPeakSize(), OrderStatus.NEW,
-                    enterOrderRq.getMinimumExecutionQuantity());
+            return IcebergOrder.builder()
+                    .orderId(enterOrderRq.getOrderId())
+                    .security(this)
+                    .side(enterOrderRq.getSide())
+                    .quantity(enterOrderRq.getQuantity())
+                    .price(enterOrderRq.getPrice())
+                    .broker(broker)
+                    .shareholder(shareholder)
+                    .entryTime(enterOrderRq.getEntryTime())
+                    .peakSize(enterOrderRq.getPeakSize())
+                    .status(OrderStatus.NEW)
+                    .minimumExecutionQuantity(enterOrderRq.getMinimumExecutionQuantity())
+                    .build();
     }
 
     public MatchResult handleEnterOrder(Order order, long reqId, Matcher matcher){
