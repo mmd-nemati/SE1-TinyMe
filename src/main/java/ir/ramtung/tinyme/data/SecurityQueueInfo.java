@@ -22,6 +22,14 @@ public class SecurityQueueInfo {
     private EnterOrderRepo sellDisabledOrders = new EnterOrderRepo(DESCENDING);
     private EnterOrderRepo sellEnabledOrders = new EnterOrderRepo(DESCENDING);
 
+    public EnterOrderRepo getDisabledOrders(Side side) {
+        return side == Side.BUY ? buyDisabledOrders : sellDisabledOrders;
+    }
+
+    public EnterOrderRepo getEnabledOrders(Side side) {
+        return side == Side.BUY ? buyEnabledOrders : sellEnabledOrders;
+    }
+
     public void addToDisabled(Order order, long rqId) {
         if(order.getSide() == Side.BUY)
             buyDisabledOrders.addOrder(order, rqId);

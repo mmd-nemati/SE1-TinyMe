@@ -39,12 +39,7 @@ abstract class Handler {
     }
 
     void execBuyAndSell(Security security, Side side){
-        EnterOrderRepo orders;
-        if(side == Side.BUY)
-            orders = security.getQueueInfo().getBuyEnabledOrders().makeCopy();
-        else
-            orders = security.getQueueInfo().getSellEnabledOrders().makeCopy();
-
+        EnterOrderRepo orders = security.getQueueInfo().getEnabledOrders(side).makeCopy();
         if(orders != null) {
             for (long reqId : orders.allOrderKeysSortedByStopPrice())
                 executeTheEnabled(orders.findByRqId(reqId), reqId, side);

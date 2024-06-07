@@ -254,27 +254,17 @@ public class Security {
     }
 
     public void updateDisabledOrders(EnterOrderRq updateOrderRq){
-        EnterOrderRepo disabledOrders;
-        if(updateOrderRq.getSide() == Side.BUY)
-            disabledOrders = queueInfo.getBuyDisabledOrders();
-        else
-            disabledOrders = queueInfo.getSellDisabledOrders();
-
-        Order order = disabledOrders.findByOrderId(updateOrderRq.getOrderId());
-        long prevRqId = disabledOrders.getRqIdByOrderId(order.getOrderId());
-        disabledOrders.addOrder(order, updateOrderRq.getRequestId());
-        disabledOrders.removeByRqId(prevRqId);
+        EnterOrderRepo orders = queueInfo.getDisabledOrders(updateOrderRq.getSide());
+        Order order = orders.findByOrderId(updateOrderRq.getOrderId());
+        long prevRqId = orders.getRqIdByOrderId(order.getOrderId());
+        orders.addOrder(order, updateOrderRq.getRequestId());
+        orders.removeByRqId(prevRqId);
     }
 
     public boolean isAuction() { return this.state == MatchingState.AUCTION; }
 
     public void transportEnabled(Side side){
-        EnterOrderRepo orders;
-        if(side == Side.BUY)
-            orders = queueInfo.getBuyEnabledOrders();
-        else
-            orders = queueInfo.getSellEnabledOrders();
-
+        EnterOrderRepo orders = queueInfo.getEnabledOrders(side);;
         for(long rqId : orders.allOrderKeysSortedByStopPrice()){
             Order order = orders.findByRqId(rqId);
             order.setStopPriceZero();
