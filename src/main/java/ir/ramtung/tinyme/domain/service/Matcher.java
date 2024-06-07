@@ -66,7 +66,6 @@ public class Matcher {
         return MatchResult.auctioned(trades);
     }
 
-
     private void rollbackTrades(Order newOrder, LinkedList<Trade> trades) {
         if (newOrder.getSide() == Side.BUY) {
             newOrder.getBroker().increaseCreditBy(trades.stream().mapToLong(Trade::getTradedValue).sum());
@@ -108,6 +107,7 @@ public class Matcher {
     public boolean canMatch(Order order) {
         return orderBook.hasOrderOfType(order.getSide().opposite()) && order.getQuantity() > 0;
     }
+
     private MatchResult recognizeOutcome(Order order, int lastTradePrice){
         if (order.getSide() == Side.BUY && !order.getBroker().hasEnoughCredit(order.getValue()))
             return MatchResult.notEnoughCredit();
@@ -139,11 +139,9 @@ public class Matcher {
             }
             order.getSecurity().getOrderBook().enqueue(result.remainder());
         }
-        if (!result.trades().isEmpty()) {
-            for (Trade trade : result.trades()) {
-                trade.getBuy().getShareholder().incPosition(trade.getSecurity(), trade.getQuantity());
-                trade.getSell().getShareholder().decPosition(trade.getSecurity(), trade.getQuantity());
-            }
+        for (Trade trade : result.trades()) {
+            trade.getBuy().getShareholder().incPosition(trade.getSecurity(), trade.getQuantity());
+            trade.getSell().getShareholder().decPosition(trade.getSecurity(), trade.getQuantity());
         }
         return result;
     }
@@ -172,5 +170,4 @@ public class Matcher {
         }
         return(execute(order));
     }
-
 }

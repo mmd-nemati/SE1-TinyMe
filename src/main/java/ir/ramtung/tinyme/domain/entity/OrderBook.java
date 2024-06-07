@@ -29,7 +29,7 @@ public class OrderBook {
         it.add(order);
     }
 
-    private LinkedList<Order> getQueue(Side side) {
+    public LinkedList<Order> getQueue(Side side) {
         return side == Side.BUY ? buyQueue : sellQueue;
     }
 

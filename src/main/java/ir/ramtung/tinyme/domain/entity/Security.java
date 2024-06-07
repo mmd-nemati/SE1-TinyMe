@@ -12,7 +12,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jgroups.util.Tuple;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -269,29 +268,28 @@ public class Security {
         return candidateOrders;
     }
 
-    public MatchResult openAuction(Matcher matcher, MatchingState nextState) {
+    public MatchResult openAuction(Matcher matcher) {
         OrderBook candidateOrders = getCandidateOrders();
-        if (candidateOrders.getBuyQueue().isEmpty() || candidateOrders.getSellQueue().isEmpty())
-            return MatchResult.auctioned(new ArrayList<>());
         OrderBook candidateOrdersCopy = candidateOrders.snapshot();
+
         MatchResult result = matcher.auctionMatch(candidateOrders, this.openingPrice);
-        for (Order order : candidateOrdersCopy.getBuyQueue())
-            if (!candidateOrders.hasByOrderId(Side.BUY, order.getOrderId()))
-                this.orderBook.removeByOrderId(Side.BUY, order.getOrderId());
-        for (Order order : candidateOrdersCopy.getSellQueue())
-            if (!candidateOrders.hasByOrderId(Side.SELL, order.getOrderId()))
-                this.orderBook.removeByOrderId(Side.SELL, order.getOrderId());
+        syncRemovedOrders(candidateOrders, candidateOrdersCopy, Side.BUY);
+        syncRemovedOrders(candidateOrders, candidateOrdersCopy, Side.SELL);
 
         for (Trade trade : result.trades())
             if (trade.getPrice() < trade.getBuy().getPrice())
                 trade.getBuy().getBroker().increaseCreditBy((long) (trade.getBuy().getPrice() - trade.getPrice()) * trade.getQuantity());
 
-        if (!result.trades().isEmpty()) {
-            this.lastTradePrice = result.trades().getLast().getPrice();
-            handleDisabledOrders();
-        }
+        updateLastTradePrice(this.openingPrice);
+        handleDisabledOrders();
 
         return result;
+    }
+
+    private void syncRemovedOrders(OrderBook candidateOrders, OrderBook candidateOrdersCopy, Side side) {
+        for (Order order : candidateOrdersCopy.getQueue(side))
+            if (!candidateOrders.hasByOrderId(side, order.getOrderId()))
+                this.orderBook.removeByOrderId(side, order.getOrderId());
     }
 
     public void updateDisabledOrders(EnterOrderRq updateOrderRq){
