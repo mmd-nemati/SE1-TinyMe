@@ -33,65 +33,25 @@ public class OrderHandler extends Handler{
             MatchResult matchResult;
             if (enterOrderRq.getRequestType() == OrderEntryType.NEW_ORDER)
                 matchResult = security.newOrder(enterOrderRq, broker, shareholder, matcher);
-            else
+            else {
                 matchResult = security.updateOrder(enterOrderRq, matcher);
+                if (matchResult.outcome() == MatchingOutcome.ACCEPTED)
+                    security.updateDisabledOrders(enterOrderRq);
+            }
 
-            if (matchResult.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT) {
-                eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), List.of(Message.BUYER_HAS_NOT_ENOUGH_CREDIT)));
+            if (publishRejectedOutcome(matchResult, enterOrderRq))
                 return;
-            }
-            if (matchResult.outcome() == MatchingOutcome.NOT_ENOUGH_POSITIONS) {
-                eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), List.of(Message.SELLER_HAS_NOT_ENOUGH_POSITIONS)));
-                return;
-            }
-            if (matchResult.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC) {
-                eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), List.of(Message.ORDER_MINIMUM_EXEC_QUANTITY_NOT_SATISFY)));
-                return;
-            }
-            if (enterOrderRq.getRequestType() == OrderEntryType.NEW_ORDER)
-                eventPublisher.publish(new OrderAcceptedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
-            else
-                eventPublisher.publish(new OrderUpdatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
-
+            publishSuccessfulEntry(enterOrderRq);
             publishOpeningPriceEvent(security);
 
-            if(matchResult.outcome() == MatchingOutcome.ACCEPTED && enterOrderRq.getRequestType() == OrderEntryType.UPDATE_ORDER)
-                security.updateDisabledOrders(enterOrderRq);
-            if(matchResult.outcome() == MatchingOutcome.EXECUTED &&  enterOrderRq.isStopLimitOrderRq())
+            if (matchResult.outcome() == MatchingOutcome.EXECUTED && enterOrderRq.isStopLimitOrderRq())
                 applyActivationEffects(enterOrderRq, security);
-            if (!matchResult.trades().isEmpty()) {
-                applyExecutionEffects(security, enterOrderRq, matchResult);
-            }
-        } catch (InvalidRequestException ex) {
+
+            applyExecutionEffects(security, enterOrderRq, matchResult);
+        }
+        catch (InvalidRequestException ex) {
             eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), ex.getReasons()));
         }
-    }
-
-
-
-
-
-    private void removeReqFromDisableds(EnterOrderRq enterOrderRq, Security security){
-        EnterOrderRepo orders;
-        if(enterOrderRq.getSide() == Side.BUY)
-            orders = security.getBuyDisabledOrders();
-        else
-            orders = security.getSellDisabledOrders();
-
-        orders.removeByOrderId(enterOrderRq.getOrderId());
-    }
-
-    private void applyActivationEffects(EnterOrderRq rq, Security security){
-        rq.setStopPriceZero();
-        if(rq.getRequestType() == OrderEntryType.UPDATE_ORDER)
-            removeReqFromDisableds(rq, security);
-        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
-    }
-
-    private void applyExecutionEffects(Security security, EnterOrderRq rq, MatchResult matchResult){
-        rq.setStopPriceZero();
-        applyExecutionUpdates(security, rq.getOrderId(), rq.getRequestId(),  matchResult);
-        executeEnabledOrders(security);
     }
 
     public void handleDeleteOrder(DeleteOrderRq deleteOrderRq) {
@@ -104,6 +64,31 @@ public class OrderHandler extends Handler{
         } catch (InvalidRequestException ex) {
             eventPublisher.publish(new OrderRejectedEvent(deleteOrderRq.getRequestId(), deleteOrderRq.getOrderId(), ex.getReasons()));
         }
+    }
+
+    private void removeReqFromDisables(EnterOrderRq enterOrderRq, Security security){
+        EnterOrderRepo orders;
+        if(enterOrderRq.getSide() == Side.BUY)
+            orders = security.getBuyDisabledOrders();
+        else
+            orders = security.getSellDisabledOrders();
+
+        orders.removeByOrderId(enterOrderRq.getOrderId());
+    }
+
+    private void applyActivationEffects(EnterOrderRq rq, Security security){
+        rq.setStopPriceZero();
+        if(rq.getRequestType() == OrderEntryType.UPDATE_ORDER)
+            removeReqFromDisables(rq, security);
+        eventPublisher.publish(new OrderActivatedEvent(rq.getRequestId(), rq.getOrderId()));
+    }
+
+    private void applyExecutionEffects(Security security, EnterOrderRq rq, MatchResult matchResult){
+        if (matchResult.trades().isEmpty())
+            return;
+        rq.setStopPriceZero();
+        applyExecutionUpdates(security, rq.getOrderId(), rq.getRequestId(),  matchResult);
+        executeEnabledOrders(security);
     }
 
     private void validateEnterOrderRq(EnterOrderRq enterOrderRq) throws InvalidRequestException {
@@ -169,5 +154,29 @@ public class OrderHandler extends Handler{
             Tuple<Integer, Integer> opening = security.calculateOpeningPrice();
             eventPublisher.publish(new OpeningPriceEvent(security.getIsin(), opening.getVal1(), opening.getVal2()));
         }
+    }
+
+    private boolean publishRejectedOutcome(MatchResult matchResult, EnterOrderRq enterOrderRq) {
+        if (matchResult.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT) {
+            eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), List.of(Message.BUYER_HAS_NOT_ENOUGH_CREDIT)));
+            return true;
+        }
+        else if (matchResult.outcome() == MatchingOutcome.NOT_ENOUGH_POSITIONS) {
+            eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), List.of(Message.SELLER_HAS_NOT_ENOUGH_POSITIONS)));
+            return true;
+        }
+        else if (matchResult.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC) {
+            eventPublisher.publish(new OrderRejectedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId(), List.of(Message.ORDER_MINIMUM_EXEC_QUANTITY_NOT_SATISFY)));
+            return true;
+        }
+
+        return false;
+    }
+
+    private void publishSuccessfulEntry(EnterOrderRq enterOrderRq) {
+        if (enterOrderRq.getRequestType() == OrderEntryType.NEW_ORDER)
+            eventPublisher.publish(new OrderAcceptedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
+        else
+            eventPublisher.publish(new OrderUpdatedEvent(enterOrderRq.getRequestId(), enterOrderRq.getOrderId()));
     }
 }

@@ -23,19 +23,16 @@ public class Matcher {
             Order matchingOrder = orderBook.matchWithFirst(newOrder);
             if (matchingOrder == null)
                 break;
-            int tradePrice;
-            if (this.securityState == MatchingState.AUCTION)
-                tradePrice = openingPrice;
-            else
-                tradePrice = matchingOrder.getPrice();
-            Trade trade = new Trade(newOrder.getSecurity(), tradePrice, Math.min(newOrder.getQuantity(), matchingOrder.getQuantity()), newOrder, matchingOrder);
+            int tradePrice = (this.securityState == MatchingState.AUCTION) ? openingPrice : matchingOrder.getPrice();
+            Trade trade = new Trade(newOrder.getSecurity(), tradePrice, Math.min(newOrder.getQuantity(),
+                    matchingOrder.getQuantity()), newOrder, matchingOrder);
+
             if (newOrder.getSide() == Side.BUY && this.securityState == MatchingState.CONTINUOUS) {
-                if (trade.buyerHasEnoughCredit())
-                    trade.decreaseBuyersCredit();
-                else {
+                if (!trade.buyerHasEnoughCredit()) {
                     rollbackTrades(newOrder, trades);
                     return MatchResult.notEnoughCredit();
                 }
+                trade.decreaseBuyersCredit();
             }
             trade.increaseSellersCredit();
             trades.add(trade);
@@ -122,8 +119,7 @@ public class Matcher {
     }
 
     public MatchResult execute(Order order) {
-        MatchResult result;
-        result = match(order);
+        MatchResult result = match(order);
 
         order.unmarkFirstEntry();
         if (result.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT || result.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC)
@@ -147,7 +143,6 @@ public class Matcher {
     }
 
     public MatchResult execute(Order order, int lastTradePrice, MatchingState securityState){
-        MatchResult result;
         this.securityState = securityState;
         if (securityState == MatchingState.AUCTION) {
             if (order.getQuantity() > 0) {
@@ -158,16 +153,15 @@ public class Matcher {
                 }
                 order.getSecurity().getOrderBook().enqueue(order);
             }
-            result = MatchResult.executed(order, new LinkedList<>());
-            return result;
+            return MatchResult.executed(order, new LinkedList<>());
         }
 
-        if(order.isStopLimitOrder()) {
-            result = recognizeOutcome(order, lastTradePrice);
+        if (order.isStopLimitOrder()) {
+            MatchResult result = recognizeOutcome(order, lastTradePrice);
             if(result.outcome() != MatchingOutcome.ACTIVATED)
                 return(result);
             order.setStopPriceZero();
         }
-        return(execute(order));
+        return execute(order);
     }
 }

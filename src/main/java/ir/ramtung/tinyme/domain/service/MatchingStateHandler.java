@@ -19,7 +19,7 @@ public class MatchingStateHandler extends Handler{
             eventPublisher.publish(new OrderActivatedEvent(rqId, enabled.findByRqId(rqId).getOrderId()));
     }
 
-    private void handleAuctionChangeEnableds(Security security){
+    private void handleAuctionChangeEnables(Security security){
         EnterOrderRepo buyEnabled = security.getBuyEnabledOrders();
         EnterOrderRepo sellEnabled = security.getSellEnabledOrders();
         publishActForEach(buyEnabled);
@@ -33,17 +33,20 @@ public class MatchingStateHandler extends Handler{
             if(nextState == MatchingState.CONTINUOUS)
                 executeEnabledOrders(security);
             else
-                handleAuctionChangeEnableds(security);
+                handleAuctionChangeEnables(security);
         }
+    }
+
+    private void publishTradeEvents(MatchResult auctionResult) {
+        for (Trade trade : auctionResult.trades())
+            eventPublisher.publish(new TradeEvent(trade.getSecurity().getIsin(), trade.getPrice(), trade.getQuantity(),
+                    trade.getBuy().getOrderId(), trade.getSell().getOrderId()));
     }
 
     private void handleAuctionChange(MatchingState nextState, Security security){
         MatchResult auctionResult = security.openAuction(matcher);
         applyTradeEffects(auctionResult, nextState, security);
-
-        for (Trade trade : auctionResult.trades())
-            eventPublisher.publish(new TradeEvent(trade.getSecurity().getIsin(), trade.getPrice(), trade.getQuantity(),
-                    trade.getBuy().getOrderId(), trade.getSell().getOrderId()));
+        publishTradeEvents(auctionResult);
     }
 
     public void handleChangeMatchingState(ChangeMatchingStateRq changeMatchingStateRq) {
