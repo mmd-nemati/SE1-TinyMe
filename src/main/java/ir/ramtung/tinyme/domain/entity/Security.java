@@ -92,8 +92,7 @@ public class Security {
         Order order = queueInfo.findOrder(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
         if (order.isStopLimitOrder() && this.isAuction())
             throw new InvalidRequestException(Message.CANNOT_DELETE_STOP_ORDER_IN_AUCTION_STATE);
-        if (order.getSide() == Side.BUY)
-            order.getBroker().increaseCreditBy(order.getValue());
+        handleCredit(order, order.getSide(), true);
 
         queueInfo.deleteOrder(order, deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
     }
@@ -111,15 +110,11 @@ public class Security {
                 || updateOrderRq.getPrice() != order.getPrice()
                 || ((order instanceof IcebergOrder icebergOrder) && (icebergOrder.getPeakSize() < updateOrderRq.getPeakSize()));
 
-        if (updateOrderRq.getSide() == Side.BUY) {
-            order.getBroker().increaseCreditBy(order.getValue());
-        }
+        handleCredit(order, updateOrderRq.getSide(), true);
         Order originalOrder = order.snapshot();
         order.updateFromRequest(updateOrderRq);
         if (!losesPriority) {
-            if (updateOrderRq.getSide() == Side.BUY) {
-                order.getBroker().decreaseCreditBy(order.getValue());
-            }
+            handleCredit(order, updateOrderRq.getSide(), false);
             return MatchResult.executed(null, List.of());
         }
         else
@@ -129,9 +124,7 @@ public class Security {
         MatchResult matchResult = matcher.execute(order, lastTradePrice, this.state);
         if (matchResult.outcome() != MatchingOutcome.EXECUTED) {
             getOrderBook().enqueue(originalOrder);
-            if (updateOrderRq.getSide() == Side.BUY) {
-                originalOrder.getBroker().decreaseCreditBy(originalOrder.getValue());
-            }
+            handleCredit(originalOrder, updateOrderRq.getSide(), false);
         }
         return matchResult;
     }
@@ -156,6 +149,14 @@ public class Security {
             if (order.getSecurity().isAuction())
                 throw new InvalidRequestException(Message.CANNOT_UPDATE_STOP_ORDER_IN_AUCTION_STATE);
         }
+    }
+
+    private void handleCredit(Order order, Side side, boolean increase) {
+        if (side == Side.BUY)
+            if (increase)
+                order.getBroker().increaseCreditBy(order.getValue());
+            else
+                order.getBroker().decreaseCreditBy(order.getValue());
     }
 
     public void handleDisabledOrders() {
