@@ -19,7 +19,7 @@ public class Matcher {
 
         LinkedList<Trade> trades = new LinkedList<>();
 
-        while (orderBook.hasOrderOfType(newOrder.getSide().opposite()) && newOrder.getQuantity() > 0) {
+        while (canMatch(newOrder)) {
             Order matchingOrder = orderBook.matchWithFirst(newOrder);
             if (matchingOrder == null)
                 break;
@@ -39,20 +39,7 @@ public class Matcher {
             }
             trade.increaseSellersCredit();
             trades.add(trade);
-
-            if (newOrder.getQuantity() >= matchingOrder.getQuantity()) {
-                newOrder.decreaseQuantity(matchingOrder.getQuantity());
-                orderBook.removeFirst(matchingOrder.getSide());
-                if (matchingOrder instanceof IcebergOrder icebergOrder) {
-                    icebergOrder.decreaseQuantity(matchingOrder.getQuantity());
-                    icebergOrder.replenish();
-                    if (icebergOrder.getQuantity() > 0)
-                        orderBook.enqueue(icebergOrder);
-                }
-            } else {
-                matchingOrder.decreaseQuantity(newOrder.getQuantity());
-                newOrder.makeQuantityZero();
-            }
+            handleQuantities(newOrder, matchingOrder);
         }
         if (newOrder.isFirstEntry() && !newOrder.isMinExecQuantitySatisfied(prevQuantity)) {
             rollbackTrades(newOrder, trades);
@@ -101,6 +88,26 @@ public class Matcher {
         }
     }
 
+    public void handleQuantities(Order newOrder, Order matchingOrder) {
+        if (newOrder.getQuantity() >= matchingOrder.getQuantity()) {
+            newOrder.decreaseQuantity(matchingOrder.getQuantity());
+            orderBook.removeFirst(matchingOrder.getSide());
+            if (matchingOrder instanceof IcebergOrder icebergOrder) {
+                icebergOrder.decreaseQuantity(matchingOrder.getQuantity());
+                icebergOrder.replenish();
+                if (icebergOrder.getQuantity() > 0)
+                    orderBook.enqueue(icebergOrder);
+            }
+        }
+        else {
+            matchingOrder.decreaseQuantity(newOrder.getQuantity());
+            newOrder.makeQuantityZero();
+        }
+    }
+
+    public boolean canMatch(Order order) {
+        return orderBook.hasOrderOfType(order.getSide().opposite()) && order.getQuantity() > 0;
+    }
     private MatchResult recognizeOutcome(Order order, int lastTradePrice){
         if (order.getSide() == Side.BUY && !order.getBroker().hasEnoughCredit(order.getValue()))
             return MatchResult.notEnoughCredit();
