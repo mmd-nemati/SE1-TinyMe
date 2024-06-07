@@ -69,9 +69,9 @@ public class OrderHandler extends Handler{
     private void removeReqFromDisables(EnterOrderRq enterOrderRq, Security security){
         EnterOrderRepo orders;
         if(enterOrderRq.getSide() == Side.BUY)
-            orders = security.getBuyDisabledOrders();
+            orders = security.getQueueInfo().getBuyDisabledOrders();
         else
-            orders = security.getSellDisabledOrders();
+            orders = security.getQueueInfo().getSellDisabledOrders();
 
         orders.removeByOrderId(enterOrderRq.getOrderId());
     }

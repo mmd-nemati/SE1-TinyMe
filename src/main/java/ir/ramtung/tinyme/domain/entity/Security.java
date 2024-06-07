@@ -1,5 +1,6 @@
 package ir.ramtung.tinyme.domain.entity;
 
+import ir.ramtung.tinyme.data.SecurityQueueInfo;
 import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
@@ -23,19 +24,7 @@ public class Security {
     @Builder.Default
     private int lotSize = 1;
     @Builder.Default
-    private OrderBook orderBook = new OrderBook();
-    private final static boolean ASCENDING = true;
-    private final static boolean DESCENDING = false;
-    @Builder.Default
-    EnterOrderRepo buyDisabledOrders = new EnterOrderRepo(ASCENDING);
-
-    @Builder.Default
-    EnterOrderRepo buyEnabledOrders = new EnterOrderRepo(ASCENDING);
-
-    @Builder.Default
-    EnterOrderRepo sellDisabledOrders = new EnterOrderRepo(DESCENDING);
-    @Builder.Default
-    EnterOrderRepo sellEnabledOrders = new EnterOrderRepo(DESCENDING);
+    private SecurityQueueInfo queueInfo = new SecurityQueueInfo();
 
     @Builder.Default
     int lastTradePrice = 0;
@@ -47,7 +36,7 @@ public class Security {
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) throws InvalidRequestException {
         if (enterOrderRq.getSide() == Side.SELL &&
                 !shareholder.hasEnoughPositionsOn(this,
-                        orderBook.totalSellQuantityByShareholder(shareholder) + enterOrderRq.getQuantity()))
+                        getOrderBook().totalSellQuantityByShareholder(shareholder) + enterOrderRq.getQuantity()))
             return MatchResult.notEnoughPositions();
         final Order order = makeOrder(enterOrderRq, broker, shareholder);
 
@@ -95,35 +84,27 @@ public class Security {
 
     private void handleAcceptingState(MatchResult result, Order order, long rqId){
         if(result.outcome() == MatchingOutcome.ACCEPTED){
-            if(order.getSide() == Side.BUY)
-                buyDisabledOrders.addOrder(order, rqId);
-            else
-                sellDisabledOrders.addOrder(order, rqId);
+            queueInfo.addToDisabled(order, rqId);
         }
     }
 
     public void deleteOrder(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
-        Order order = findOrder(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
+        Order order = queueInfo.findOrder(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
         if (order.isStopLimitOrder() && this.isAuction())
             throw new InvalidRequestException(Message.CANNOT_DELETE_STOP_ORDER_IN_AUCTION_STATE);
         if (order.getSide() == Side.BUY)
             order.getBroker().increaseCreditBy(order.getValue());
 
-        if (orderBook.hasByOrderId(order.getSide(), order.getOrderId()))
-            orderBook.removeByOrderId(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
-        else if (buyDisabledOrders.existByOrderId(deleteOrderRq.getOrderId()))
-            buyDisabledOrders.removeByOrderId(deleteOrderRq.getOrderId());
-        else if (sellDisabledOrders.existByOrderId(deleteOrderRq.getOrderId()))
-            sellDisabledOrders.removeByOrderId(deleteOrderRq.getOrderId());
+        queueInfo.deleteOrder(order, deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
     }
 
     public MatchResult updateOrder(EnterOrderRq updateOrderRq, Matcher matcher) throws InvalidRequestException {
-        Order order = findOrder(updateOrderRq.getSide(), updateOrderRq.getOrderId());
+        Order order = queueInfo.findOrder(updateOrderRq.getSide(), updateOrderRq.getOrderId());
         verifyUpdate(order, updateOrderRq);
 
         if (updateOrderRq.getSide() == Side.SELL &&
                 !order.getShareholder().hasEnoughPositionsOn(this,
-                        orderBook.totalSellQuantityByShareholder(order.getShareholder()) - order.getQuantity() + updateOrderRq.getQuantity()))
+                        getOrderBook().totalSellQuantityByShareholder(order.getShareholder()) - order.getQuantity() + updateOrderRq.getQuantity()))
             return MatchResult.notEnoughPositions();
 
         boolean losesPriority = order.isQuantityIncreased(updateOrderRq.getQuantity())
@@ -144,10 +125,10 @@ public class Security {
         else
             order.markAsNew();
 
-        orderBook.removeByOrderId(updateOrderRq.getSide(), updateOrderRq.getOrderId());
+        getOrderBook().removeByOrderId(updateOrderRq.getSide(), updateOrderRq.getOrderId());
         MatchResult matchResult = matcher.execute(order, lastTradePrice, this.state);
         if (matchResult.outcome() != MatchingOutcome.EXECUTED) {
-            orderBook.enqueue(originalOrder);
+            getOrderBook().enqueue(originalOrder);
             if (updateOrderRq.getSide() == Side.BUY) {
                 originalOrder.getBroker().decreaseCreditBy(originalOrder.getValue());
             }
@@ -177,9 +158,9 @@ public class Security {
         }
     }
 
-    public void handleDisabledOrders(){
-        handleEachDisabled(buyDisabledOrders, buyEnabledOrders, true);
-        handleEachDisabled(sellDisabledOrders, sellEnabledOrders, false);
+    public void handleDisabledOrders() {
+        handleEachDisabled(queueInfo.getBuyDisabledOrders(), queueInfo.getBuyEnabledOrders(), true);
+        handleEachDisabled(queueInfo.getSellDisabledOrders(), queueInfo.getSellEnabledOrders(), false);
     }
 
     private boolean isActivationReady(boolean isBuySide, Order disabled){
@@ -202,7 +183,7 @@ public class Security {
     private void handleEachDisabled(EnterOrderRepo disabledRqs,
                                     EnterOrderRepo enabledRqs, boolean isBuySide){
         if(disabledRqs != null) {
-            EnterOrderRepo toRemove = new EnterOrderRepo(ASCENDING);
+            EnterOrderRepo toRemove = new EnterOrderRepo(true);
             for (long disabledKey : disabledRqs.allOrderKeysSortedByStopPrice()) {
                 if (isActivationReady(isBuySide, disabledRqs.findByRqId(disabledKey)))
                     enableTheRq(disabledRqs.findByRqId(disabledKey),
@@ -217,30 +198,11 @@ public class Security {
     }
 
     public void removeEnabledOrder(long rqId, Side side){
-        if(side == Side.BUY)
-            buyEnabledOrders.removeByRqId(rqId);
-        else
-            sellEnabledOrders.removeByRqId(rqId);
-    }
-
-    private Order findOrder(Side side, long orderId) throws InvalidRequestException {
-        Order order = orderBook.findByOrderId(side, orderId);
-        if (order != null)
-            return order;
-
-        order = buyDisabledOrders.findByOrderId(orderId);
-        if (order != null)
-            return order;
-
-        order = sellDisabledOrders.findByOrderId(orderId);
-        if (order != null)
-            return order;
-
-        throw new InvalidRequestException(Message.ORDER_ID_NOT_FOUND);
+        queueInfo.deleteEnabledOrder(rqId, side);
     }
 
     public int getQuantityBasedOnPrice(int price) {
-        return Math.min(orderBook.totalBuyQuantityByPrice(price), orderBook.totalSellQuantityByPrice(price));
+        return Math.min(getOrderBook().totalBuyQuantityByPrice(price), getOrderBook().totalSellQuantityByPrice(price));
     }
 
     private boolean isNewOneCloser(int newOne, int oldOne, int target){
@@ -252,13 +214,13 @@ public class Security {
         return(new Tuple<>(0, 0));
     }
     public Tuple<Integer, Integer> calculateOpeningPrice(){
-        if(orderBook.getBuyQueue().isEmpty() || orderBook.getSellQueue().isEmpty())
+        if(getOrderBook().getBuyQueue().isEmpty() || getOrderBook().getSellQueue().isEmpty())
             return(calcOpeningPriceForEmptyQueue());
 
         Tuple<Integer, Integer> priceQuantity = new Tuple<>(
                 this.lastTradePrice, getQuantityBasedOnPrice(this.lastTradePrice));
-        int min = orderBook.getBuyQueue().getLast().getPrice();
-        int max = orderBook.getSellQueue().getLast().getPrice();
+        int min = getOrderBook().getBuyQueue().getLast().getPrice();
+        int max = getOrderBook().getSellQueue().getLast().getPrice();
 
         for (int cur = min; cur <= max; cur++) {
             int currentQuantity = getQuantityBasedOnPrice(cur);
@@ -272,27 +234,14 @@ public class Security {
         return priceQuantity;
     }
 
-    private OrderBook getCandidateOrders(){
-        this.openingPrice = calculateOpeningPrice().getVal1();
-        OrderBook candidateOrders = new OrderBook();
-        for (Order order : orderBook.getBuyQueue())
-            if (order.getPrice() >= this.openingPrice)
-                candidateOrders.enqueue(order);
-
-        for (Order order : orderBook.getSellQueue())
-            if (order.getPrice() <= this.openingPrice)
-                candidateOrders.enqueue(order);
-
-        return candidateOrders;
-    }
-
     public MatchResult openAuction(Matcher matcher) {
-        OrderBook candidateOrders = getCandidateOrders();
+        this.openingPrice = calculateOpeningPrice().getVal1();
+        OrderBook candidateOrders = queueInfo.getCandidateOrders(this.openingPrice);
         OrderBook candidateOrdersCopy = candidateOrders.snapshot();
 
         MatchResult result = matcher.auctionMatch(candidateOrders, this.openingPrice);
-        syncRemovedOrders(candidateOrders, candidateOrdersCopy, Side.BUY);
-        syncRemovedOrders(candidateOrders, candidateOrdersCopy, Side.SELL);
+        queueInfo.syncRemovedOrders(candidateOrders, candidateOrdersCopy, Side.BUY);
+        queueInfo.syncRemovedOrders(candidateOrders, candidateOrdersCopy, Side.SELL);
 
         for (Trade trade : result.trades())
             if (trade.getPrice() < trade.getBuy().getPrice())
@@ -304,18 +253,12 @@ public class Security {
         return result;
     }
 
-    private void syncRemovedOrders(OrderBook candidateOrders, OrderBook candidateOrdersCopy, Side side) {
-        for (Order order : candidateOrdersCopy.getQueue(side))
-            if (!candidateOrders.hasByOrderId(side, order.getOrderId()))
-                this.orderBook.removeByOrderId(side, order.getOrderId());
-    }
-
     public void updateDisabledOrders(EnterOrderRq updateOrderRq){
         EnterOrderRepo disabledOrders;
         if(updateOrderRq.getSide() == Side.BUY)
-            disabledOrders = buyDisabledOrders;
+            disabledOrders = queueInfo.getBuyDisabledOrders();
         else
-            disabledOrders = sellDisabledOrders;
+            disabledOrders = queueInfo.getSellDisabledOrders();
 
         Order order = disabledOrders.findByOrderId(updateOrderRq.getOrderId());
         long prevRqId = disabledOrders.getRqIdByOrderId(order.getOrderId());
@@ -328,15 +271,19 @@ public class Security {
     public void transportEnabled(Side side){
         EnterOrderRepo orders;
         if(side == Side.BUY)
-            orders = buyEnabledOrders;
+            orders = queueInfo.getBuyEnabledOrders();
         else
-            orders = sellEnabledOrders;
+            orders = queueInfo.getSellEnabledOrders();
 
         for(long rqId : orders.allOrderKeysSortedByStopPrice()){
             Order order = orders.findByRqId(rqId);
             order.setStopPriceZero();
-            orderBook.putBack(order);
+            getOrderBook().putBack(order);
         }
         orders.clear();
+    }
+
+    public OrderBook getOrderBook() {
+        return queueInfo.getOrderBook();
     }
 }

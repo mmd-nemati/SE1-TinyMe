@@ -77,9 +77,9 @@ class SecurityMatchingStateTest {
     }
     private void mockOrderActivation(Order order) {
         if (order.getSide() == BUY)
-            security.getBuyDisabledOrders().findByOrderId(order.getOrderId()).setStopPriceZero();
+            security.getQueueInfo().getBuyDisabledOrders().findByOrderId(order.getOrderId()).setStopPriceZero();
         else
-            security.getSellDisabledOrders().findByOrderId(order.getOrderId()).setStopPriceZero();
+        security.getQueueInfo().getSellDisabledOrders().findByOrderId(order.getOrderId()).setStopPriceZero();
     }
     private void changeMatchingState(MatchingState state) {
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), state));

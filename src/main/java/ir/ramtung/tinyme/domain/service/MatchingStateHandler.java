@@ -20,8 +20,8 @@ public class MatchingStateHandler extends Handler{
     }
 
     private void handleAuctionChangeEnables(Security security){
-        EnterOrderRepo buyEnabled = security.getBuyEnabledOrders();
-        EnterOrderRepo sellEnabled = security.getSellEnabledOrders();
+        EnterOrderRepo buyEnabled = security.getQueueInfo().getBuyEnabledOrders();
+        EnterOrderRepo sellEnabled = security.getQueueInfo().getSellEnabledOrders();
         publishActForEach(buyEnabled);
         publishActForEach(sellEnabled);
         security.transportEnabled(Side.SELL);

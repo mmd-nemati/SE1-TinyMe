@@ -41,9 +41,9 @@ abstract class Handler {
     void execBuyAndSell(Security security, Side side){
         EnterOrderRepo orders;
         if(side == Side.BUY)
-            orders = security.getBuyEnabledOrders().makeCopy();
+            orders = security.getQueueInfo().getBuyEnabledOrders().makeCopy();
         else
-            orders = security.getSellEnabledOrders().makeCopy();
+            orders = security.getQueueInfo().getSellEnabledOrders().makeCopy();
 
         if(orders != null) {
             for (long reqId : orders.allOrderKeysSortedByStopPrice())
@@ -79,9 +79,9 @@ abstract class Handler {
 
     private boolean isEnabledOver(Side side, Security security){
         return(
-                (side == Side.BUY && (security.getBuyEnabledOrders().theSize() == 0))
+                (side == Side.BUY && (security.getQueueInfo().getBuyEnabledOrders().theSize() == 0))
                         ||
-                        (side == Side.SELL && (security.getSellEnabledOrders().theSize() == 0))
+                        (side == Side.SELL && (security.getQueueInfo().getSellEnabledOrders().theSize() == 0))
         );
     }
 }
