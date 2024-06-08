@@ -47,4 +47,8 @@ public class Trade {
         return buy.getBroker().hasEnoughCredit(getTradedValue());
     }
 
+    public void payBuyerDebt() {
+        if (price < buy.getPrice())
+            buy.getBroker().increaseCreditBy((long) (buy.getPrice() - price) * quantity);
+    }
 }

@@ -244,10 +244,7 @@ public class Security {
         queueInfo.syncRemovedOrders(candidateOrders, candidateOrdersCopy, Side.BUY);
         queueInfo.syncRemovedOrders(candidateOrders, candidateOrdersCopy, Side.SELL);
 
-        for (Trade trade : result.trades())
-            if (trade.getPrice() < trade.getBuy().getPrice())
-                trade.getBuy().getBroker().increaseCreditBy((long) (trade.getBuy().getPrice() - trade.getPrice()) * trade.getQuantity());
-
+        result.trades().forEach(Trade::payBuyerDebt);
         updateLastTradePrice(this.openingPrice);
         handleDisabledOrders();
 
