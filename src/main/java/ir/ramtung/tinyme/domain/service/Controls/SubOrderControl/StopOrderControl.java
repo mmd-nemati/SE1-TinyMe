@@ -1,15 +1,16 @@
-package ir.ramtung.tinyme.domain.service;
+package ir.ramtung.tinyme.domain.service.Controls.SubOrderControl;
 
 import ir.ramtung.tinyme.messaging.Message;
-import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.repository.BrokerRepository;
 import ir.ramtung.tinyme.repository.SecurityRepository;
 import ir.ramtung.tinyme.repository.ShareholderRepository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-public class StopOrderControl extends CommonOrderControl{
+@Component
+public class StopOrderControl extends CommonOrderControl {
 
     public StopOrderControl(SecurityRepository securityRepository, BrokerRepository brokerRepository,
                             ShareholderRepository shareholderRepository){

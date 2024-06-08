@@ -1,11 +1,11 @@
 package ir.ramtung.tinyme.domain.entity;
 
 import ir.ramtung.tinyme.data.SecurityQueueInfo;
+import ir.ramtung.tinyme.domain.service.Controls.SecurityErrorControl;
 import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.domain.service.Matcher;
-import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.messaging.request.MatchingState;
 import ir.ramtung.tinyme.repository.EnterOrderRepo;
 import lombok.Builder;
@@ -33,15 +33,15 @@ public class Security {
     private MatchingState state = MatchingState.CONTINUOUS;
     @Builder.Default
     private int openingPrice = 0;
+    @Builder.Default
+    private SecurityErrorControl errorControl = new SecurityErrorControl();
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) throws InvalidRequestException {
         if (enterOrderRq.getSide() == Side.SELL &&
                 !shareholder.hasEnoughPositionsOn(this,
                         getOrderBook().totalSellQuantityByShareholder(shareholder) + enterOrderRq.getQuantity()))
             return MatchResult.notEnoughPositions();
         final Order order = makeOrder(enterOrderRq, broker, shareholder);
-
-        if (order.isStopLimitOrder() && this.isAuction())
-            throw new InvalidRequestException(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE);
+        errorControl.verifyNewOrder(order, this.isAuction());
 
         return handleEnterOrder(order, enterOrderRq.getRequestId(), matcher);
     }
@@ -90,8 +90,7 @@ public class Security {
 
     public void deleteOrder(DeleteOrderRq deleteOrderRq) throws InvalidRequestException {
         Order order = queueInfo.findOrder(deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
-        if (order.isStopLimitOrder() && this.isAuction())
-            throw new InvalidRequestException(Message.CANNOT_DELETE_STOP_ORDER_IN_AUCTION_STATE);
+        errorControl.verifyDelete(order, this.isAuction());
         handleCredit(order, order.getSide(), true);
 
         queueInfo.deleteOrder(order, deleteOrderRq.getSide(), deleteOrderRq.getOrderId());
@@ -99,7 +98,7 @@ public class Security {
 
     public MatchResult updateOrder(EnterOrderRq updateOrderRq, Matcher matcher) throws InvalidRequestException {
         Order order = queueInfo.findOrder(updateOrderRq.getSide(), updateOrderRq.getOrderId());
-        verifyUpdate(order, updateOrderRq);
+        errorControl.verifyUpdate(order, updateOrderRq);
 
         if (updateOrderRq.getSide() == Side.SELL &&
                 !order.getShareholder().hasEnoughPositionsOn(this,
@@ -127,28 +126,6 @@ public class Security {
             handleCredit(originalOrder, updateOrderRq.getSide(), false);
         }
         return matchResult;
-    }
-
-    private void verifyUpdate(Order order, EnterOrderRq updateOrderRq) throws InvalidRequestException {
-        if ((order instanceof IcebergOrder) && !updateOrderRq.isIcebergOrderRq())
-            throw new InvalidRequestException(Message.INVALID_PEAK_SIZE);
-        if (!(order instanceof IcebergOrder) && updateOrderRq.isIcebergOrderRq())
-            throw new InvalidRequestException(Message.CANNOT_SPECIFY_PEAK_SIZE_FOR_A_NON_ICEBERG_ORDER);
-        if (order.getMinimumExecutionQuantity() != updateOrderRq.getMinimumExecutionQuantity())
-            throw new InvalidRequestException(Message.CANNOT_CHANGE_MINIMUM_EXEC_QUANTITY);
-        if (!order.isStopLimitOrder() && updateOrderRq.isStopLimitOrderRq())
-            throw new InvalidRequestException(Message.CANNOT_CHANGE_STOP_PRICE_FOR_ACTIVATED);
-
-        if (order.isStopLimitOrder()) {
-            if (updateOrderRq.isIcebergOrderRq())
-                throw new InvalidRequestException(Message.STOP_ORDER_CANNOT_BE_ICEBERG_TOO);
-            if (updateOrderRq.hasMinimumExecutionQuantity())
-                throw new InvalidRequestException(Message.STOP_ORDER_CANNOT_HAVE_MINIMUM_EXEC_QUANTITY);
-            if (!order.isUpdatingStopOrderPossible(updateOrderRq.getOrderId(), updateOrderRq.getSecurityIsin(), updateOrderRq.getBrokerId(), updateOrderRq.getSide(), updateOrderRq.getShareholderId()))
-                throw new InvalidRequestException(Message.CANNOT_CHANGE_NOT_ALLOWED_PARAMETERS_BEFORE_ACTIVATION);
-            if (order.getSecurity().isAuction())
-                throw new InvalidRequestException(Message.CANNOT_UPDATE_STOP_ORDER_IN_AUCTION_STATE);
-        }
     }
 
     private void handleCredit(Order order, Side side, boolean increase) {

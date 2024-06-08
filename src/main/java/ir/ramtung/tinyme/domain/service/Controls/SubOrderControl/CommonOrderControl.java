@@ -1,6 +1,5 @@
-package ir.ramtung.tinyme.domain.service;
+package ir.ramtung.tinyme.domain.service.Controls.SubOrderControl;
 
-import ir.ramtung.tinyme.domain.entity.Security;
 import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.repository.BrokerRepository;
@@ -13,28 +12,15 @@ import java.util.LinkedList;
 import java.util.List;
 
 
-import ir.ramtung.tinyme.domain.entity.Broker;
 import ir.ramtung.tinyme.domain.entity.Security;
-import ir.ramtung.tinyme.domain.entity.Shareholder;
-import ir.ramtung.tinyme.messaging.EventPublisher;
-import ir.ramtung.tinyme.messaging.Message;
-import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
-import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
-import ir.ramtung.tinyme.repository.BrokerRepository;
-import ir.ramtung.tinyme.repository.SecurityRepository;
-import ir.ramtung.tinyme.repository.ShareholderRepository;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
 
-import java.util.LinkedList;
-import java.util.List;
 
 @Component
 @Scope("prototype")
 public class CommonOrderControl {
-    private SecurityRepository securityRepository;
-    private BrokerRepository brokerRepository;
-    private ShareholderRepository shareholderRepository;
+    private final SecurityRepository securityRepository;
+    private final BrokerRepository brokerRepository;
+    private final ShareholderRepository shareholderRepository;
 
     public CommonOrderControl(SecurityRepository securityRepository, BrokerRepository brokerRepository,
                               ShareholderRepository shareholderRepository){

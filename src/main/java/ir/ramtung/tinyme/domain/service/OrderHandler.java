@@ -1,6 +1,7 @@
 package ir.ramtung.tinyme.domain.service;
 
 import ir.ramtung.tinyme.domain.entity.*;
+import ir.ramtung.tinyme.domain.service.Controls.OrderErrorControl;
 import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.EventPublisher;
@@ -17,16 +18,16 @@ import java.util.List;
 
 @Service
 public class OrderHandler extends Handler{
-    private OrderControl orderControl;
+    private final OrderErrorControl errorControl;
 
     public OrderHandler(SecurityRepository securityRepository, BrokerRepository brokerRepository, ShareholderRepository shareholderRepository, EventPublisher eventPublisher, Matcher matcher) {
         super(securityRepository, brokerRepository, shareholderRepository, eventPublisher, matcher);
-        orderControl = new OrderControl(securityRepository, brokerRepository, shareholderRepository);
+        errorControl = new OrderErrorControl(securityRepository, brokerRepository, shareholderRepository);
     }
 
     public void handleEnterOrder(EnterOrderRq enterOrderRq) {
         try {
-            orderControl.generateErrors(enterOrderRq);
+            errorControl.generateErrors(enterOrderRq);
 
             Security security = securityRepository.findSecurityByIsin(enterOrderRq.getSecurityIsin());
             Broker broker = brokerRepository.findBrokerById(enterOrderRq.getBrokerId());
