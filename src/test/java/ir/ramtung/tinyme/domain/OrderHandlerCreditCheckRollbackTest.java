@@ -64,9 +64,13 @@ public class OrderHandlerCreditCheckRollbackTest {
         brokerRepository.addBroker(broker3);
         OrderBook orderBook = security.getOrderBook();
         List<Order> orders = Arrays.asList(
-                new Order(100, security, Side.SELL, 30, 500, broker1, shareholder),
-                new Order(110, security, Side.SELL, 20, 500, broker2, shareholder),
-                new Order(120, security, Side.SELL, 20, 600, broker2, shareholder)
+                Order.builder().orderId(100).security(security).side(Side.SELL).quantity(30).price(500)
+                        .broker(broker1).shareholder(shareholder).build(),
+                Order.builder().orderId(110).security(security).side(Side.SELL).quantity(20).price(500)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(120).security(security).side(Side.SELL).quantity(20).price(600)
+                        .broker(broker2).shareholder(shareholder).build()
+
         );
         orders.forEach(orderBook::enqueue);
 
@@ -98,9 +102,9 @@ public class OrderHandlerCreditCheckRollbackTest {
         brokerRepository.addBroker(broker3);
         OrderBook orderBook = security.getOrderBook();
         List<Order> orders = Arrays.asList(
-                new IcebergOrder(1, security, Side.SELL, 45, 1545, broker1, shareholder, 200),
-                new Order(2, security, Side.SELL, 7, 1545, broker2, shareholder),
-                new Order(3, security, Side.SELL, 10, 1550, broker2, shareholder)
+                IcebergOrder.builder().orderId(1).security(security).side(Side.SELL).quantity(45).price(1545).broker(broker1).shareholder(shareholder).peakSize(200).build(),
+                Order.builder().orderId(2).security(security).side(Side.SELL).quantity(7).price(1545).broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(3).security(security).side(Side.SELL).quantity(10).price(1550).broker(broker2).shareholder(shareholder).build()
         );
         orders.forEach(orderBook::enqueue);
 
@@ -132,10 +136,10 @@ public class OrderHandlerCreditCheckRollbackTest {
         brokerRepository.addBroker(broker3);
         OrderBook orderBook = security.getOrderBook();
         List<Order> orders = Arrays.asList(
-                new IcebergOrder(1, security, Side.SELL, 45, 1545, broker1, shareholder, 200),
-                new Order(2, security, Side.SELL, 7, 1545, broker2, shareholder),
-                new Order(3, security, Side.SELL, 10, 1550, broker2, shareholder),
-                new Order(4, security, Side.BUY, 60, 1540, broker3, shareholder)
+                IcebergOrder.builder().orderId(1).security(security).side(Side.SELL).quantity(45).price(1545).broker(broker1).shareholder(shareholder).peakSize(200).build(),
+                Order.builder().orderId(2).security(security).side(Side.SELL).quantity(7).price(1545).broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(3).security(security).side(Side.SELL).quantity(10).price(1550).broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(4).security(security).side(Side.BUY).quantity(60).price(1540).broker(broker3).shareholder(shareholder).build()
         );
         orders.forEach(orderBook::enqueue);
 

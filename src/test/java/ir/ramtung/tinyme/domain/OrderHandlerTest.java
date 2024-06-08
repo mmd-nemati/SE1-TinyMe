@@ -70,8 +70,10 @@ public class OrderHandlerTest {
     }
     @Test
     void new_order_matched_completely_with_one_trade() {
-        Order matchingBuyOrder = new Order(100, security, Side.BUY, 1000, 15500, broker1, shareholder);
-        Order incomingSellOrder = new Order(200, security, Side.SELL, 300, 15450, broker2, shareholder);
+        Order matchingBuyOrder = Order.builder().orderId(100).security(security).side(Side.BUY).quantity(1000)
+                .price(15500).broker(broker1).shareholder(shareholder).build();
+        Order incomingSellOrder = Order.builder().orderId(200).security(security).side(Side.SELL).quantity(300)
+                .price(15450).broker(broker2).shareholder(shareholder).build();
         security.getOrderBook().enqueue(matchingBuyOrder);
 
         orderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1, "ABC", 200, LocalDateTime.now(), Side.SELL, 300, 15450, 2, shareholder.getShareholderId(), 0));
@@ -89,9 +91,12 @@ public class OrderHandlerTest {
     }
     @Test
     void new_order_matched_partially_with_two_trades() {
-        Order matchingBuyOrder1 = new Order(100, security, Side.BUY, 300, 15500, broker1, shareholder);
-        Order matchingBuyOrder2 = new Order(110, security, Side.BUY, 300, 15500, broker1, shareholder);
-        Order incomingSellOrder = new Order(200, security, Side.SELL, 1000, 15450, broker2, shareholder);
+        Order matchingBuyOrder1 = Order.builder().orderId(100).security(security).side(Side.BUY).quantity(300)
+                .price(15500).broker(broker1).shareholder(shareholder).build();
+        Order matchingBuyOrder2 = Order.builder().orderId(110).security(security).side(Side.BUY).quantity(300)
+                .price(15500).broker(broker1).shareholder(shareholder).build();
+        Order incomingSellOrder = Order.builder().orderId(200).security(security).side(Side.SELL).quantity(1000)
+                .price(15450).broker(broker2).shareholder(shareholder).build();
         security.getOrderBook().enqueue(matchingBuyOrder1);
         security.getOrderBook().enqueue(matchingBuyOrder2);
 
@@ -172,7 +177,8 @@ public class OrderHandlerTest {
 
     @Test
     void update_order_causing_no_trades() {
-        Order queuedOrder = new Order(200, security, Side.SELL, 500, 15450, broker1, shareholder);
+        Order queuedOrder = Order.builder().orderId(200).security(security).side(Side.SELL).quantity(500)
+                .price(15450).broker(broker1).shareholder(shareholder).build();
         security.getOrderBook().enqueue(queuedOrder);
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(1, "ABC", 200, LocalDateTime.now(), Side.SELL, 1000, 15450, 1, shareholder.getShareholderId(), 0));
         verify(eventPublisher).publish(new OrderUpdatedEvent(1, 200));
@@ -180,9 +186,12 @@ public class OrderHandlerTest {
 
     @Test
     void handle_valid_update_with_trades() {
-        Order matchingOrder = new Order(1, security, Side.BUY, 500, 15450, broker1, shareholder);
-        Order beforeUpdate = new Order(200, security, Side.SELL, 1000, 15455, broker2, shareholder);
-        Order afterUpdate = new Order(200, security, Side.SELL, 500, 15450, broker2, shareholder);
+        Order matchingOrder = Order.builder().orderId(1).security(security).side(Side.BUY).quantity(500)
+                .price(15450).broker(broker1).shareholder(shareholder).build();
+        Order beforeUpdate = Order.builder().orderId(200).security(security).side(Side.SELL).quantity(1000)
+                .price(15455).broker(broker2).shareholder(shareholder).build();
+        Order afterUpdate = Order.builder().orderId(200).security(security).side(Side.SELL).quantity(500)
+                .price(15450).broker(broker2).shareholder(shareholder).build();
         security.getOrderBook().enqueue(matchingOrder);
         security.getOrderBook().enqueue(beforeUpdate);
 

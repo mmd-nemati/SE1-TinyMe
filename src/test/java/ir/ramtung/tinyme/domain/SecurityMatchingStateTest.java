@@ -2,14 +2,12 @@ package ir.ramtung.tinyme.domain;
 
 import ir.ramtung.tinyme.config.MockedJMSTestConfig;
 import ir.ramtung.tinyme.domain.entity.*;
-import ir.ramtung.tinyme.domain.service.Matcher;
 import ir.ramtung.tinyme.domain.service.MatchingStateHandler;
 import ir.ramtung.tinyme.domain.service.OrderHandler;
 import ir.ramtung.tinyme.messaging.EventPublisher;
 import ir.ramtung.tinyme.messaging.Message;
 import ir.ramtung.tinyme.messaging.TradeDTO;
 import ir.ramtung.tinyme.messaging.event.*;
-import ir.ramtung.tinyme.messaging.exception.InvalidRequestException;
 import ir.ramtung.tinyme.messaging.request.ChangeMatchingStateRq;
 import ir.ramtung.tinyme.messaging.request.DeleteOrderRq;
 import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
@@ -24,12 +22,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import static org.mockito.Mockito.*;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 
 import static ir.ramtung.tinyme.domain.entity.Side.BUY;
-import static ir.ramtung.tinyme.domain.entity.Side.SELL;
-import static org.assertj.core.api.Assertions.*;
+
 import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Import(MockedJMSTestConfig.class)
@@ -49,7 +45,6 @@ class SecurityMatchingStateTest {
     ShareholderRepository shareholderRepository;
 
     private Security security;
-    private List<Order> orders;
     private Broker sellBroker;
     private Broker buyBroker;
     private Shareholder shareholder;
@@ -79,7 +74,7 @@ class SecurityMatchingStateTest {
         if (order.getSide() == BUY)
             security.getQueueInfo().getBuyDisabledOrders().findByOrderId(order.getOrderId()).setStopPriceZero();
         else
-        security.getQueueInfo().getSellDisabledOrders().findByOrderId(order.getOrderId()).setStopPriceZero();
+            security.getQueueInfo().getSellDisabledOrders().findByOrderId(order.getOrderId()).setStopPriceZero();
     }
     private void changeMatchingState(MatchingState state) {
         matchingStateHandler.handleChangeMatchingState(new ChangeMatchingStateRq(security.getIsin(), state));
@@ -106,8 +101,9 @@ class SecurityMatchingStateTest {
     @Test
     void cant_make_new_stop_order_in_auction_state() {
         changeMatchingState(MatchingState.AUCTION);
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 50);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(50).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher).publish(new OrderRejectedEvent(1, 6, List.of(Message.CANNOT_ADD_STOP_ORDER_IN_AUCTION_STATE)));
@@ -116,8 +112,9 @@ class SecurityMatchingStateTest {
     @Test
     void cant_update_unactivated_stop_order_in_auction_state() {
         mockTradeWithPrice(100);
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 120);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(120).build();
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
 
         changeMatchingState(MatchingState.AUCTION);
@@ -130,8 +127,9 @@ class SecurityMatchingStateTest {
 
     @Test
     void cant_delete_unactivated_stop_order_in_auction_state() {
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 120);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(120).build();
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
 
         changeMatchingState(MatchingState.AUCTION);
@@ -143,8 +141,9 @@ class SecurityMatchingStateTest {
     @Test
     void cant_make_new_order_with_min_exec_in_auction_state() {
         changeMatchingState(MatchingState.AUCTION);
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 50, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(50).stopPrice(0).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher).publish(new OrderRejectedEvent(1, 6, List.of(Message.CANNOT_HAVE_MINIMUM_EXEC_QUANTITY_IN_AUCTION_STATE)));
@@ -153,10 +152,12 @@ class SecurityMatchingStateTest {
     @Test
     void new_orders_shouldnt_start_matching_in_auction_state() {
         changeMatchingState(MatchingState.AUCTION);
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.SELL).quantity(50).price(170)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
 
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
@@ -170,14 +171,18 @@ class SecurityMatchingStateTest {
     void correct_opening_price_event_with_new_orders() {
         mockTradeWithPrice(170);
         changeMatchingState(MatchingState.AUCTION);
-        Order o1 = new Order(6, security, Side.BUY, 50, 180, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o3 = new Order(7, security, Side.BUY, 70, 180, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o4 = new Order(7, security, Side.SELL, 120, 180, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(50).price(180)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.SELL).quantity(50).price(170)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o3 = Order.builder().orderId(7).security(security).side(Side.BUY).quantity(70).price(180)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o4 = Order.builder().orderId(7).security(security).side(Side.SELL).quantity(120).price(180)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 0, 0));
@@ -194,16 +199,21 @@ class SecurityMatchingStateTest {
 
     @Test
     void unactivated_order_actives_after_auction_to_auction() {
-        Order o1 = new Order(6, security, Side.BUY, 100, 100, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 40);
-        Order o2 = new Order(10, security, Side.SELL, 100, 50, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o3 = new Order(7, security, Side.BUY, 100, 200, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o4 = new Order(8, security, Side.BUY, 100, 40, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o5 = new Order(11, security, Side.SELL, 100, 220, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(100)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(40).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.SELL).quantity(100).price(50)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o3 = Order.builder().orderId(7).security(security).side(Side.BUY).quantity(100).price(200)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o4 = Order.builder().orderId(8).security(security).side(Side.BUY).quantity(100).price(40)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o5 = Order.builder().orderId(11).security(security).side(Side.SELL).quantity(100).price(220)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher, never()).publish(new OrderActivatedEvent(1, 6));
@@ -222,43 +232,50 @@ class SecurityMatchingStateTest {
 
     @Test
     void activated_orders_in_auction_make_trade_in_next_auction_after_update() {
-        Order o1 = new Order(6, security, Side.BUY, 100, 100, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 40);
-        Order o2 = new Order(10, security, Side.SELL, 100, 50, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o3 = new Order(7, security, Side.BUY, 100, 200, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o4 = new Order(8, security, Side.BUY, 100, 40, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o5 = new Order(11, security, Side.SELL, 100, 220, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(100)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(40).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.SELL).quantity(100).price(50)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o3 = Order.builder().orderId(7).security(security).side(Side.BUY).quantity(100).price(200)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o4 = Order.builder().orderId(8).security(security).side(Side.BUY).quantity(100).price(40)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o5 = Order.builder().orderId(11).security(security).side(Side.SELL).quantity(100).price(220)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
 
-       changeMatchingState(MatchingState.AUCTION);
+        changeMatchingState(MatchingState.AUCTION);
         orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
         orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
         orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
         orderHandler.handleEnterOrder(createNewOrderRequest(5, o5));
 
-       changeMatchingState(MatchingState.AUCTION);
+        changeMatchingState(MatchingState.AUCTION);
 
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(5, security.getIsin(), 6,
                 LocalDateTime.now(), Side.BUY, 100, 220, buyBroker.getBrokerId(),
                 shareholder.getShareholderId(), 0, 0, 0));
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 220, 100));
 
-       changeMatchingState(MatchingState.AUCTION);
+        changeMatchingState(MatchingState.AUCTION);
         verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 220, 100, 6, 11));
     }
 
     @Test
     void correct_broker_credit_of_orders_in_auction_state() {
         changeMatchingState(MatchingState.AUCTION);
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.SELL).quantity(50).price(170)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
         orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
@@ -271,14 +288,15 @@ class SecurityMatchingStateTest {
 
         changeMatchingState(MatchingState.AUCTION);
         assertThat(buyBroker.getCredit()).isEqualTo(100_000_000 - 100 * 170);
-        assertThat(sellBroker.getCredit()).isEqualTo( 50 * 170);
+        assertThat(sellBroker.getCredit()).isEqualTo(50 * 170);
     }
 
     @Test
     void correct_delete_of_stop_order_after_activation_in_auction_state() {
         mockTradeWithPrice(200);
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 300);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(300).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher, never()).publish(new OrderActivatedEvent(1, 6));
@@ -294,14 +312,18 @@ class SecurityMatchingStateTest {
     @Test
     void correct_normal_auction_matching() {
         changeMatchingState(MatchingState.AUCTION);
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o3 = new Order(7, security, Side.BUY, 120, 400, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o4 = new Order(11, security, Side.SELL, 100, 380, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.SELL).quantity(50).price(170)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o3 = Order.builder().orderId(7).security(security).side(Side.BUY).quantity(120).price(400)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o4 = Order.builder().orderId(11).security(security).side(Side.SELL).quantity(100).price(380)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
@@ -312,16 +334,18 @@ class SecurityMatchingStateTest {
 
         verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 380, 50, 7, 10));
         verify(eventPublisher).publish(new TradeEvent(security.getIsin(), 380, 70, 7, 11));
-
     }
+
     @Test
     void correct_paying_dept_of_auction_to_buy_broker() {
         mockTradeWithPrice(380);
         changeMatchingState(MatchingState.AUCTION);
-        Order o3 = new Order(7, security, Side.BUY, 120, 400, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o4 = new Order(11, security, Side.SELL, 150, 380, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o3 = Order.builder().orderId(7).security(security).side(Side.BUY).quantity(120).price(400)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o4 = Order.builder().orderId(11).security(security).side(Side.SELL).quantity(150).price(380)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(3, o3));
         orderHandler.handleEnterOrder(createNewOrderRequest(4, o4));
@@ -336,10 +360,12 @@ class SecurityMatchingStateTest {
     @Test
     void consider_all_of_iceberg_quantity_to_calculate_opening_price(){
         changeMatchingState(MatchingState.AUCTION);
-        Order o1 = new Order(6, security, Side.BUY, 100, 150, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new IcebergOrder(10, security, Side.SELL, 50, 150, sellBroker, shareholder,
-                LocalDateTime.now(), 20, 10, OrderStatus.NEW);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(150)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = IcebergOrder.builder().orderId(10).security(security).side(Side.SELL).quantity(50).price(150)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .peakSize(20).displayedQuantity(10).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         verify(eventPublisher).publish(new OpeningPriceEvent(security.getIsin(), 0, 0));
@@ -353,12 +379,15 @@ class SecurityMatchingStateTest {
     void correct_continuous_matching_for_remainder_order_from_auction() {
         mockTradeWithPrice(380);
         changeMatchingState(MatchingState.AUCTION);
-        Order o1 = new Order(7, security, Side.BUY, 120, 400, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(11, security, Side.SELL, 150, 380, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o3 = new Order(6, security, Side.BUY, 100, 420, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(7).security(security).side(Side.BUY).quantity(120).price(400)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(11).security(security).side(Side.SELL).quantity(150).price(380)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o3 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(420)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
         Trade remainderTrade = new Trade(security, 380, 30, o3, o2);
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
@@ -375,12 +404,15 @@ class SecurityMatchingStateTest {
 
     @Test
     void nothing_new_matches_with_continuous_to_auction() {
-        Order o1 = new Order(7, security, Side.BUY, 120, 400, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(11, security, Side.SELL, 150, 380, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o3 = new Order(6, security, Side.BUY, 100, 420, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(7).security(security).side(Side.BUY).quantity(120).price(400)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(11).security(security).side(Side.SELL).quantity(150).price(380)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o3 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(420)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
         Trade t1 = new Trade(security, 400, 120, o1, o2);
         Trade t2 = new Trade(security, 380, 30, o3, o2);
 
@@ -398,18 +430,24 @@ class SecurityMatchingStateTest {
 
     @Test
     void new_activated_orders_match_in_auction_to_continuous(){
-        Order o1 = new Order(6, security, Side.BUY, 100, 100, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 40);
-        Order o2 = new Order(10, security, Side.SELL, 100, 50, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o3 = new Order(7, security, Side.BUY, 100, 200, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o4 = new Order(8, security, Side.BUY, 100, 40, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o5 = new Order(11, security, Side.SELL, 100, 220, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o6 = new Order(12, security, Side.SELL, 100, 50, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(100)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(40).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.SELL).quantity(100).price(50)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o3 = Order.builder().orderId(7).security(security).side(Side.BUY).quantity(100).price(200)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o4 = Order.builder().orderId(8).security(security).side(Side.BUY).quantity(100).price(40)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o5 = Order.builder().orderId(11).security(security).side(Side.SELL).quantity(100).price(220)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o6 = Order.builder().orderId(12).security(security).side(Side.SELL).quantity(100).price(50)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
         Trade continuousTrade = new Trade(security, 100, 100, o1, o6);
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
 
@@ -425,7 +463,6 @@ class SecurityMatchingStateTest {
         verify(eventPublisher).publish(new OrderAcceptedEvent(1, 6));
         orderHandler.handleEnterOrder(createNewOrderRequest(6, o6));
 
-//        changeMatchingState(MatchingState.);
         verify(eventPublisher).publish(new OrderExecutedEvent(6, 12, List.of(new TradeDTO(continuousTrade))));
     }
 }

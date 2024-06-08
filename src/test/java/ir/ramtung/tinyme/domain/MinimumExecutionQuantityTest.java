@@ -83,9 +83,13 @@ public class MinimumExecutionQuantityTest {
     @Test
     void update_orders_change_min_exec_quantity_are_rejected() {
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 445, 545, broker2, shareholder, LocalDateTime.now(), OrderStatus.FirstEntry, 200),
-                new Order(6, security, Side.SELL, 350, 580, broker1, shareholder, LocalDateTime.now(), OrderStatus.FirstEntry, 200)
-        );
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(445).price(545)
+                        .broker(broker2).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.FirstEntry)
+                        .minimumExecutionQuantity(200).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(350).price(580)
+                        .broker(broker1).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.FirstEntry)
+                        .minimumExecutionQuantity(200).build()
+);
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
         orderHandler.handleEnterOrder(EnterOrderRq.createUpdateOrderRq(1, "ABC", 6, LocalDateTime.now(), Side.SELL, 350, 580, broker1.getBrokerId(), shareholder.getShareholderId(), 0, 150));
@@ -99,8 +103,10 @@ public class MinimumExecutionQuantityTest {
     void buy_order_not_satisfied_min_exec_quantity_is_rejected() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -113,8 +119,10 @@ public class MinimumExecutionQuantityTest {
     void sell_order_not_satisfied_min_exec_quantity_is_rejected() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -127,8 +135,10 @@ public class MinimumExecutionQuantityTest {
     void buy_order_satisfied_min_exec_quantity_is_accepted() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -140,8 +150,10 @@ public class MinimumExecutionQuantityTest {
     void buy_order_quantity_with_satisfied_min_exec_is_correct() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -151,12 +163,15 @@ public class MinimumExecutionQuantityTest {
         assertThat(security.getOrderBook().findByOrderId(Side.SELL, 6)).isNull();
     }
 
+
     @Test
     void sell_order_quantity_with_satisfied_min_exec_is_correct() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -170,8 +185,10 @@ public class MinimumExecutionQuantityTest {
     void update_min_exec_quantity_in_buy_order_after_satisfied_is_rejected() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -185,8 +202,10 @@ public class MinimumExecutionQuantityTest {
     void update_min_exec_quantity_in_sell_order_after_satisfied_is_rejected() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -200,8 +219,10 @@ public class MinimumExecutionQuantityTest {
     void re_entry_buy_order_doesnt_check_min_exec_quantity() {
         broker2.increaseCreditBy(500_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 100, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(100).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -215,8 +236,10 @@ public class MinimumExecutionQuantityTest {
     void re_entry_sell_order_doesnt_check_min_exec_quantity() {
         broker2.increaseCreditBy(500_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 100, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(100).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -230,8 +253,10 @@ public class MinimumExecutionQuantityTest {
     void sell_order_with_rejected_min_exec_rollbacks_correctly() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -244,8 +269,10 @@ public class MinimumExecutionQuantityTest {
     void buy_order_with_rejected_min_exec_rollbacks_correctly() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 50, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(50).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -258,8 +285,10 @@ public class MinimumExecutionQuantityTest {
     void buy_iceberg_order_with_rejected_min_exec_rollbacks_correctly() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 40, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(40).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
@@ -272,8 +301,10 @@ public class MinimumExecutionQuantityTest {
     void sell_iceberg_order_with_rejected_min_exec_rollbacks_correctly() {
         broker2.increaseCreditBy(100_000);
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 50, 545, broker2, shareholder),
-                new Order(6, security, Side.SELL, 40, 580, broker1, shareholder)
+                Order.builder().orderId(3).security(security).side(Side.BUY).quantity(50).price(545)
+                        .broker(broker2).shareholder(shareholder).build(),
+                Order.builder().orderId(6).security(security).side(Side.SELL).quantity(40).price(580)
+                        .broker(broker1).shareholder(shareholder).build()
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 

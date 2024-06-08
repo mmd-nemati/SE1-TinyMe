@@ -270,10 +270,12 @@ public class StopOrderTest {
     @Test
     void delete_partially_matched_buy_stop_order() {
         mockTradeWithPrice(200);
-        Order o1 = new Order(6, security, Side.SELL, 10, 545, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(10, security, Side.BUY, 25, 580, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 100);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.SELL).quantity(10).price(545)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.BUY).quantity(25).price(580)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(100).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(1, o1));
         orderHandler.handleEnterOrder(createNewOrderRequest(2, o2));
@@ -320,16 +322,21 @@ public class StopOrderTest {
 
     @Test
     void activate_with_correct_sort_multiple_buy_stop_order() {
-        Order o1 = new Order(6, security, Side.SELL, 100, 545, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(10, security, Side.BUY, 50, 580, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 110);
-        Order o3 = new Order(11, security, Side.BUY, 50, 580, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 100);
-        Order o4 = new Order(12, security, Side.BUY, 75, 580, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 110);
-        Order o5 = new Order(3, security, Side.BUY, 25, 550, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.SELL).quantity(100).price(545)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.BUY).quantity(50).price(580)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(110).build();
+        Order o3 = Order.builder().orderId(11).security(security).side(Side.BUY).quantity(50).price(580)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(100).build();
+        Order o4 = Order.builder().orderId(12).security(security).side(Side.BUY).quantity(75).price(580)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(110).build();
+        Order o5 = Order.builder().orderId(3).security(security).side(Side.BUY).quantity(25).price(550)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(3, o2));
         orderHandler.handleEnterOrder(createNewOrderRequest(4, o3));
@@ -354,16 +361,21 @@ public class StopOrderTest {
     @Test
     void activate_with_correct_sort_multiple_sell_stop_order() {
         mockTradeWithPrice(200);
-        Order o1 = new Order(6, security, Side.BUY, 100, 170, buyBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
-        Order o2 = new Order(10, security, Side.SELL, 50, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 190);
-        Order o3 = new Order(11, security, Side.SELL, 50, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 195);
-        Order o4 = new Order(12, security, Side.SELL, 75, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 190);
-        Order o5 = new Order(3, security, Side.SELL, 25, 170, sellBroker, shareholder,
-                LocalDateTime.now(), OrderStatus.NEW, 0, 0);
+        Order o1 = Order.builder().orderId(6).security(security).side(Side.BUY).quantity(100).price(170)
+                .broker(buyBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
+        Order o2 = Order.builder().orderId(10).security(security).side(Side.SELL).quantity(50).price(170)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(190).build();
+        Order o3 = Order.builder().orderId(11).security(security).side(Side.SELL).quantity(50).price(170)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(195).build();
+        Order o4 = Order.builder().orderId(12).security(security).side(Side.SELL).quantity(75).price(170)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(190).build();
+        Order o5 = Order.builder().orderId(3).security(security).side(Side.SELL).quantity(25).price(170)
+                .broker(sellBroker).shareholder(shareholder).entryTime(LocalDateTime.now()).status(OrderStatus.NEW)
+                .minimumExecutionQuantity(0).stopPrice(0).build();
 
         orderHandler.handleEnterOrder(createNewOrderRequest(3, o2));
         orderHandler.handleEnterOrder(createNewOrderRequest(4, o3));
