@@ -63,6 +63,11 @@ public class OrderBook {
         return false;
     }
 
+    public void removeZeroQuantityOrders() {
+        buyQueue.removeIf(order -> order.getQuantity() == 0);
+        sellQueue.removeIf(order -> order.getQuantity() == 0);
+    }
+
     public Order matchWithFirst(Order newOrder) {
         var queue = getQueue(newOrder.getSide().opposite());
         if (newOrder.matches(queue.getFirst()))

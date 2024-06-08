@@ -52,13 +52,7 @@ public class Matcher {
         for (var buyOrder : candidateOrderBook.getBuyQueue())
             trades.addAll(execute(buyOrder).trades());
 
-        for (Order order : candidateOrderBook.getBuyQueue())
-            if (order.getQuantity() == 0)
-                candidateOrderBook.removeByOrderId(Side.BUY, order.getOrderId());
-
-        for (Order order : candidateOrderBook.getSellQueue())
-            if (order.getQuantity() == 0)
-                candidateOrderBook.removeByOrderId(Side.SELL, order.getOrderId());
+        candidateOrderBook.removeZeroQuantityOrders();
 
         return MatchResult.auctioned(trades);
     }
