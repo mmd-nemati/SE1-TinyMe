@@ -38,7 +38,7 @@ public class Matcher {
             trades.add(trade);
             handleQuantities(newOrder, matchingOrder);
         }
-        if (newOrder.isFirstEntry() && !newOrder.isMinExecQuantitySatisfied(prevQuantity)) {
+        if (!newOrder.isMinExecQuantitySatisfied(prevQuantity)) {
             rollbackTrades(newOrder, trades);
             return MatchResult.notSatisfyMinExec();
         }
@@ -115,7 +115,7 @@ public class Matcher {
     public MatchResult execute(Order order) {
         MatchResult result = match(order);
 
-        order.unmarkFirstEntry();
+        order.markAsNew();
         if (result.outcome() == MatchingOutcome.NOT_ENOUGH_CREDIT || result.outcome() == MatchingOutcome.NOT_SATISFY_MIN_EXEC)
             return result;
 

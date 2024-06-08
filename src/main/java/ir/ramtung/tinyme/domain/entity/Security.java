@@ -57,7 +57,7 @@ public class Security {
                     .broker(broker)
                     .shareholder(shareholder)
                     .entryTime(enterOrderRq.getEntryTime())
-                    .status(OrderStatus.NEW)
+                    .status(OrderStatus.FirstEntry)
                     .minimumExecutionQuantity(enterOrderRq.getMinimumExecutionQuantity())
                     .stopPrice(enterOrderRq.getStopPrice()).build();
         else
@@ -71,7 +71,7 @@ public class Security {
                     .shareholder(shareholder)
                     .entryTime(enterOrderRq.getEntryTime())
                     .peakSize(enterOrderRq.getPeakSize())
-                    .status(OrderStatus.NEW)
+                    .status(OrderStatus.FirstEntry)
                     .minimumExecutionQuantity(enterOrderRq.getMinimumExecutionQuantity())
                     .build();
     }

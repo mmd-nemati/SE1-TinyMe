@@ -83,8 +83,8 @@ public class MinimumExecutionQuantityTest {
     @Test
     void update_orders_change_min_exec_quantity_are_rejected() {
         List<Order> orders = Arrays.asList(
-                new Order(3, security, Side.BUY, 445, 545, broker2, shareholder, LocalDateTime.now(), OrderStatus.NEW, 200),
-                new Order(6, security, Side.SELL, 350, 580, broker1, shareholder, LocalDateTime.now(), OrderStatus.NEW, 200)
+                new Order(3, security, Side.BUY, 445, 545, broker2, shareholder, LocalDateTime.now(), OrderStatus.FirstEntry, 200),
+                new Order(6, security, Side.SELL, 350, 580, broker1, shareholder, LocalDateTime.now(), OrderStatus.FirstEntry, 200)
         );
         orders.forEach(order -> security.getOrderBook().enqueue(order));
 
