@@ -5,15 +5,12 @@ import ir.ramtung.tinyme.messaging.request.EnterOrderRq;
 import ir.ramtung.tinyme.repository.BrokerRepository;
 import ir.ramtung.tinyme.repository.SecurityRepository;
 import ir.ramtung.tinyme.repository.ShareholderRepository;
+import ir.ramtung.tinyme.domain.entity.Security;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
 import java.util.List;
-
-
-import ir.ramtung.tinyme.domain.entity.Security;
-
 
 @Component
 @Scope("prototype")

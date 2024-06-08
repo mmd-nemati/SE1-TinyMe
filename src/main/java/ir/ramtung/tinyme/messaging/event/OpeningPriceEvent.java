@@ -1,6 +1,5 @@
 package ir.ramtung.tinyme.messaging.event;
 
-import ir.ramtung.tinyme.messaging.request.MatchingState;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

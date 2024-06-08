@@ -24,17 +24,17 @@ public class Security {
     @Builder.Default
     private int lotSize = 1;
     @Builder.Default
-    private SecurityQueueInfo queueInfo = new SecurityQueueInfo();
-
-    @Builder.Default
     int lastTradePrice = 0;
+    @Builder.Default
+    private int openingPrice = 0;
     @Builder.Default
     @Setter
     private MatchingState state = MatchingState.CONTINUOUS;
     @Builder.Default
-    private int openingPrice = 0;
+    private SecurityQueueInfo queueInfo = new SecurityQueueInfo();
     @Builder.Default
     private SecurityErrorControl errorControl = new SecurityErrorControl();
+
     public MatchResult newOrder(EnterOrderRq enterOrderRq, Broker broker, Shareholder shareholder, Matcher matcher) throws InvalidRequestException {
         if (enterOrderRq.getSide() == Side.SELL &&
                 !shareholder.hasEnoughPositionsOn(this,
