@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 
@@ -42,6 +43,8 @@ public class OrderHandlerTest {
     BrokerRepository brokerRepository;
     @Autowired
     ShareholderRepository shareholderRepository;
+    @Autowired
+    private ApplicationContext context;
     private Security security;
     private Shareholder shareholder;
     private Broker broker1;
@@ -129,7 +132,7 @@ public class OrderHandlerTest {
                 matchingBuyOrder, incomingSellOrder);
 
         EventPublisher mockEventPublisher = mock(EventPublisher.class, withSettings().verboseLogging());
-        OrderHandler myOrderHandler = new OrderHandler(securityRepository, brokerRepository, shareholderRepository, mockEventPublisher, new Matcher());
+        OrderHandler myOrderHandler = new OrderHandler(securityRepository, brokerRepository, shareholderRepository, mockEventPublisher, context.getBean(Matcher.class));
         myOrderHandler.handleEnterOrder(EnterOrderRq.createNewOrderRq(1,
                 incomingSellOrder.getSecurity().getIsin(),
                 incomingSellOrder.getOrderId(),
