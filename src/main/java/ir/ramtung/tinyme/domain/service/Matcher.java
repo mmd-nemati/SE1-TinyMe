@@ -9,7 +9,7 @@ import java.util.ListIterator;
 
 @Service
 public class Matcher {
-    private MatchingState securityState;
+    private MatchingState securityState = MatchingState.CONTINUOUS;
     private int openingPrice;
     private OrderBook orderBook;
     public MatchResult match(Order newOrder) {
