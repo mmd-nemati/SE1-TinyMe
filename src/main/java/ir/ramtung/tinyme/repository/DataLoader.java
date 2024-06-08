@@ -141,29 +141,32 @@ public class DataLoader {
                     int peakSize = Integer.parseInt(line[8]);
                     Order order;
                     if (peakSize == 0) {
-                        order = new Order(
-                                Long.parseLong(line[0]),
-                                security,
-                                Side.parse(line[2]),
-                                Integer.parseInt(line[3]),
-                                Integer.parseInt(line[4]),
-                                broker,
-                                shareholder,
-                                LocalDateTime.parse(line[7]),
-                                OrderStatus.QUEUED);
+                        order = Order.builder()
+                                .orderId(Long.parseLong(line[0]))
+                                .security(security)
+                                .side(Side.parse(line[2]))
+                                .quantity(Integer.parseInt(line[3]))
+                                .price(Integer.parseInt(line[4]))
+                                .broker(broker)
+                                .shareholder(shareholder)
+                                .entryTime(LocalDateTime.parse(line[7]))
+                                .status(OrderStatus.QUEUED)
+                                .build();
                     } else {
-                        order = new IcebergOrder(
-                                Long.parseLong(line[0]),
-                                security,
-                                Side.parse(line[2]),
-                                Integer.parseInt(line[3]),
-                                Integer.parseInt(line[4]),
-                                broker,
-                                shareholder,
-                                LocalDateTime.parse(line[7]),
-                                Integer.parseInt(line[8]),
-                                Integer.parseInt(line[9]),
-                                OrderStatus.QUEUED);
+                        order = IcebergOrder.builder()
+                                .orderId(Long.parseLong(line[0]))
+                                .security(security)
+                                .side(Side.parse(line[2]))
+                                .quantity(Integer.parseInt(line[3]))
+                                .price(Integer.parseInt(line[4]))
+                                .broker(broker)
+                                .shareholder(shareholder)
+                                .entryTime(LocalDateTime.parse(line[7]))
+                                .peakSize(Integer.parseInt(line[8]))
+                                .displayedQuantity(Integer.parseInt(line[9]))
+                                .status(OrderStatus.QUEUED)
+                                .build();
+
                     }
                     orders.addFirst(order);
                 }

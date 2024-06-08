@@ -32,68 +32,13 @@ public class Order {
     @Builder.Default
     protected int stopPrice = 0;
 
-    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status, int minimumExecutionQuantity) {
-        this.orderId = orderId;
-        this.security = security;
-        this.side = side;
-        this.quantity = quantity;
-        this.price = price;
-        this.entryTime = entryTime;
-        this.broker = broker;
-        this.shareholder = shareholder;
-        this.status = status;
-        this.minimumExecutionQuantity = minimumExecutionQuantity;
-    }
-
-    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status, int minimumExecutionQuantity, int stopPrice) {
-        this.orderId = orderId;
-        this.security = security;
-        this.side = side;
-        this.quantity = quantity;
-        this.price = price;
-        this.entryTime = entryTime;
-        this.broker = broker;
-        this.shareholder = shareholder;
-        this.status = status;
-        this.minimumExecutionQuantity = minimumExecutionQuantity;
-        this.stopPrice = stopPrice;
-    }
-
-    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime, OrderStatus status) {
-        this.orderId = orderId;
-        this.security = security;
-        this.side = side;
-        this.quantity = quantity;
-        this.price = price;
-        this.entryTime = entryTime;
-        this.broker = broker;
-        this.shareholder = shareholder;
-        this.status = status;
-    }
-
-    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder, LocalDateTime entryTime) {
-        this.orderId = orderId;
-        this.security = security;
-        this.side = side;
-        this.quantity = quantity;
-        this.price = price;
-        this.entryTime = entryTime;
-        this.broker = broker;
-        this.shareholder = shareholder;
-        this.status = OrderStatus.NEW;
-    }
-
-
-    public Order(long orderId, Security security, Side side, int quantity, int price, Broker broker, Shareholder shareholder) {
-        this(orderId, security, side, quantity, price, broker, shareholder, LocalDateTime.now());
-    }
-
+    public Order() {}
     public Order snapshot() {
-        return new Order(orderId, security, side, quantity, price, broker, shareholder, entryTime, OrderStatus.SNAPSHOT, minimumExecutionQuantity);
+        return Order.builder().orderId(orderId).security(security).side(side).quantity(quantity).price(price).broker(broker).shareholder(shareholder).entryTime(entryTime).status(OrderStatus.SNAPSHOT).minimumExecutionQuantity(minimumExecutionQuantity).build();
     }
 
     public Order snapshotWithQuantity(int newQuantity) {
-        return new Order(orderId, security, side, newQuantity, price, broker, shareholder, entryTime, OrderStatus.SNAPSHOT, minimumExecutionQuantity);
+        return Order.builder().orderId(orderId).security(security).side(side).quantity(newQuantity).price(price).broker(broker).shareholder(shareholder).entryTime(entryTime).status(OrderStatus.SNAPSHOT).minimumExecutionQuantity(minimumExecutionQuantity).build();
     }
 
     public boolean matches(Order other) {
